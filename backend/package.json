@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "vitest run",
+    "test": "vitest run --no-file-parallelism",
+    "test:all": "vitest run --no-file-parallelism",
     "migrate": "node src/db/migrate.js",
     "seed": "node seed.js"
   },
