@@ -7,7 +7,7 @@ dayjs.extend(timezone);
 
 export const SLOT_STEP_MIN = 30;
 
-function parseTimeToMinutes(timeVal) {
+export function parseTimeToMinutes(timeVal) {
   if (!timeVal) return null;
   const str = String(timeVal).trim();
   const match = str.match(/^(\d{1,2}):(\d{2})/);
@@ -117,3 +117,4 @@ export function computeSlots({
 }
 
 export default computeSlots;
+

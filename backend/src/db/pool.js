@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'bookingcloud',
   timezone: '+07:00',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 25,
   queueLimit: 0,
 });
 

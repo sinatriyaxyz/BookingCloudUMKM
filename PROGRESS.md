@@ -10,7 +10,7 @@
 | 4 | Layanan (F-03) | ✅ |
 | 5 | Jam operasional + libur (F-04) | ✅ |
 | 6 | Jam kosong (F-05) | ✅ |
-| 7 | Booking + anti-bentrok (F-06) | ⬜ |
+| 7 | Booking + anti-bentrok (F-06) | ✅ |
 | 8 | Cek status + batal pelanggan (F-07, F-10) | ⬜ |
 | 9 | Kelola reservasi + dashboard (F-08, F-09) | ⬜ |
 | 10 | Tes isolasi & konkurensi (F-11) | ⬜ |
@@ -28,6 +28,7 @@
 - Sesi 2: Zod v4 menggunakan `.issues` bukan `.errors` untuk akses error pertama. Mock pool.query di tes harus mencakup semua query termasuk `uniqueSlug` (3 call untuk register sukses).
 - Sesi 5: Jam operasional PUT menerima array 7 hari (atau { hours: [...] }), validasi open_time < close_time dengan normalisasi HH:mm. Duplikat tanggal libur mengembalikan status 409 (DUPLICATE_HOLIDAY). Hari yang belum diatur pada GET otomatis default tutup (is_closed: true).
 - Sesi 6: Response GET /api/public/businesses/:slug/availability mengembalikan `{ date, slots }` dengan slots berupa array jam mulai "HH:mm". Validasi query menggunakan zod (serviceId integer positif, date format YYYY-MM-DD). Booking aktif (status 'menunggu' atau 'dikonfirmasi') difilter dari slot yang tersedia.
+- Sesi 7: Validasi input Zod mendukung camelCase & snake_case (serviceId/service_id, customerName/customer_name, customerPhone/customer_phone). Format telepon Indonesia (9-15 digit, diawali 0 atau +62). Anti-bentrok dijamin dengan SELECT ... FOR UPDATE pada baris businesses dan query bookings di dalam satu transaksi InnoDB. Generator kode 8 karakter dengan alfabet A-Z (tanpa I, O) dan angka 2-9 (tanpa 0, 1) dengan mekanisme retry otomatis dan SAVEPOINT saat terjadi bentrok UNIQUE.
 
 ## Catatan / masalah terbuka
 (kosong)
