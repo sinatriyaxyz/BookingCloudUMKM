@@ -1,0 +1,23 @@
+; File Zona Balik (Reverse Zone) untuk 192.168.56.0/24
+; Salin ke: /etc/bind/zones/db.192.168.56
+;
+; BAGIAN YANG HARUS DIGANTI SAAT DEPLOY KE VPS:
+; 1. Angka host `13` (oktet terakhir dari 192.168.56.13) -> ganti dengan oktet terakhir IP server
+; 2. Serial `2026111201` -> format YYYYMMDDNN
+
+$TTL    604800
+@       IN      SOA     ns1.bookingcloud.example.id. admin.bookingcloud.example.id. (
+                        2026111201      ; Serial (YYYYMMDDNN)
+                        604800          ; Refresh
+                        86400           ; Retry
+                        2419200         ; Expire
+                        604800 )        ; Negative Cache TTL
+
+; Name Server (NS) record
+@       IN      NS      ns1.bookingcloud.example.id.
+
+; PTR Record (192.168.56.13 -> bookingcloud.example.id)
+13      IN      PTR     bookingcloud.example.id.
+13      IN      PTR     www.bookingcloud.example.id.
+13      IN      PTR     ns1.bookingcloud.example.id.
+

@@ -1,0 +1,22 @@
+// Konfigurasi zona lokal BIND9 — BookingCloud UMKM
+// Salin ke: /etc/bind/named.conf.local
+//
+// Bagian yang perlu disesuaikan jika berganti domain / IP VPS:
+// 1. Nama zona maju: "bookingcloud.example.id" -> ganti dengan domain Anda
+// 2. Nama zona balik: "56.168.192.in-addr.arpa" -> ganti dengan 3 oktet pertama IP server dibalik
+
+// Zona Maju (Forward Zone)
+zone "bookingcloud.example.id" {
+    type master;
+    file "/etc/bind/zones/db.bookingcloud.example.id";
+    allow-update { none; };
+};
+
+// Zona Balik (Reverse Zone) — untuk subnet 192.168.56.0/24 (VM lokal: 192.168.56.13)
+// Jika di VPS dengan IP publik A.B.C.D, ubah menjadi "C.B.A.in-addr.arpa"
+zone "56.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.192.168.56";
+    allow-update { none; };
+};
+

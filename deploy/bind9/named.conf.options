@@ -1,0 +1,40 @@
+// Konfigurasi opsi global BIND9 — BookingCloud UMKM
+// Salin ke: /etc/bind/named.conf.options
+//
+// Variabel yang dapat disesuaikan:
+// - listen-on: gunakan `any;` atau ganti dengan IP spesifik server (mis. 127.0.0.1; 192.168.56.13;)
+// - forwarders: DNS publik tujuan meneruskan query dari localhost
+
+acl "trusted_local" {
+    127.0.0.0/8;
+    ::1;
+};
+
+options {
+    directory "/var/cache/bind";
+
+    // Dengarkan query DNS di port 53 (IPv4).
+    // Dapat diganti ke IP spesifik server: listen-on port 53 { 127.0.0.1; 192.168.56.13; };
+    listen-on port 53 { any; };
+    listen-on-v6 { none; };
+
+    // Izinkan semua klien melakukan query ke zona otoritatif di server ini
+    allow-query { any; };
+
+    // KEAMANAN: Matikan rekursi untuk klien eksternal (mencegah penyalahgunaan Open Resolver / DNS Amplification)
+    recursion no;
+    allow-recursion { none; };
+
+    // Nonaktifkan transfer zona ke server tak dikenal
+    allow-transfer { none; };
+
+    // Forwarders (digunakan jika recursion diaktifkan terbatas untuk trusted_local)
+    forwarders {
+        1.1.1.1;
+        8.8.8.8;
+    };
+
+    dnssec-validation auto;
+    auth-nxdomain no;
+};
+

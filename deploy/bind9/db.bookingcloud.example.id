@@ -1,0 +1,24 @@
+; File Zona Maju (Forward Zone) untuk bookingcloud.example.id
+; Salin ke: /etc/bind/zones/db.bookingcloud.example.id
+;
+; BAGIAN YANG HARUS DIGANTI SAAT DEPLOY KE VPS:
+; 1. Domain `bookingcloud.example.id.` -> sesuaikan bila memakai domain lain
+; 2. IP `192.168.56.13` -> ganti dengan IP publik VPS (atau IP VM lokal Anda)
+; 3. Serial `2026111201` -> format YYYYMMDDNN (naikkan NN setiap kali mengubah file zona)
+
+$TTL    604800
+@       IN      SOA     ns1.bookingcloud.example.id. admin.bookingcloud.example.id. (
+                        2026111201      ; Serial (YYYYMMDDNN)
+                        604800          ; Refresh (7 hari)
+                        86400           ; Retry (1 hari)
+                        2419200         ; Expire (28 hari)
+                        604800 )        ; Negative Cache TTL (7 hari)
+
+; Name Server (NS) record
+@       IN      NS      ns1.bookingcloud.example.id.
+
+; A records (Ganti 192.168.56.13 dengan IP publik VPS Anda saat deploy final)
+ns1     IN      A       192.168.56.13
+@       IN      A       192.168.56.13
+www     IN      A       192.168.56.13
+

@@ -19,8 +19,8 @@
 | 13 | Frontend pemilik: dashboard | ✅ |
 | 14 | Frontend publik: booking | ✅ |
 | 15 | Dockerisasi | ✅ |
-| 16 | Deploy server + Nginx | ⬜ |
-| 17 | BIND9 | ⬜ |
+| 16 | Deploy server + Nginx | ✅ |
+| 17 | BIND9 | ✅ |
 | 18 | Pengujian akhir + dokumentasi | ⬜ |
 
 ## Keputusan
@@ -35,6 +35,8 @@
 - Sesi 11-13: Frontend (Vite + React + react-router-dom, CSS biasa). Token JWT di localStorage (kunci `token`); proxy dev `/api` -> :3000. Rute: /owner (dashboard), /owner/riwayat, /owner/layanan, /owner/jam, /owner/profil, /owner/login, /owner/register. Link halaman publik di profil memakai `/b/:slug` (rute dibuat di sesi 14). Aksi reservasi hanya yang valid per status; riwayat memakai GET /api/bookings (limit 10). `npm run build` sukses; 150 tes backend lulus.
 - Sesi 14: Halaman publik pelanggan dengan `PublicLayout` pada rute `/` (daftar UMKM + filter kategori), `/u/:slug` (profil UMKM & layanan, ditambah redirect dari `/b/:slug` serta pembaruan tautan profil pemilik ke `/u/:slug`), `/u/:slug/booking` (pilih layanan -> pilih tanggal WIB -> grid jam kosong dari endpoint availability -> form nama & telepon -> kirim, termasuk auto-reload slot saat 409 `SLOT_TAKEN`), `/sukses/:code` (tampilan kode booking besar, tombol salin dengan fallback, tautan ke `/cek?kode=...`), dan `/cek` (input kode booking, detail status, tombol batalkan dengan penanganan pesan batas waktu minimal 2 jam).
 - Sesi 15: Dockerisasi backend dengan multi-stage `node:20-alpine` (stage builder menginstal dependensi produksi, stage runner berjalan sebagai `USER node`, `TZ=Asia/Jakarta`, healthcheck ke `/api/health`, serta otomatis menjalankan `node src/db/migrate.js` sebelum `node src/server.js`). `docker-compose.yml` dilengkapi healthcheck pada `db` (`healthcheck.sh --connect --innodb_initialized`) dan service `api` (`depends_on` db healthy, env dari `.env` dengan override `DB_HOST=db`, mount `./db:/app/db:ro`, serta bind port khusus `127.0.0.1:3000:3000`). Ditambahkan `deploy/scripts/build-frontend.sh` (build statis ke `/var/www/bookingcloud`) dan `deploy/scripts/test-restart.sh` (uji ketahanan data reservasi setelah `docker compose restart api`).
+- Sesi 16: Konfigurasi reverse proxy & SPA server di `deploy/nginx/bookingcloud.conf` (root `/var/www/bookingcloud`, `try_files $uri $uri/ /index.html`, proxy `/api/` ke `127.0.0.1:3000`, gzip, cache aset statis 30 hari), skrip otomatisasi `deploy/scripts/deploy.sh`, dan panduan lengkap `docs/deploy.md` (termasuk UFW, SSH hardening, Security List/NSG Oracle Cloud, dan Certbot opsional). Diuji langsung pada VM Ubuntu 26.04 LTS (`192.168.56.13`) dan lolos `nginx -t` serta uji `/api/health` dan SPA.
+- Sesi 17: Konfigurasi DNS otoritatif BIND9 di `deploy/bind9/` (`named.conf.options` dengan `recursion no` untuk mencegah open resolver, `named.conf.local`, zona maju `db.bookingcloud.example.id` dan zona balik `db.192.168.56` dengan serial `2026111201`), skrip `deploy/scripts/setup-bind9.sh` (mendukung parameter IP & domain untuk mempermudah migrasi ke VPS), dan panduan `docs/dns.md`. Lolos `named-checkconf`, `named-checkzone`, dan uji resolusi `dig` / `Resolve-DnsName` dari host ke VM `192.168.56.13`.
 
 ## Catatan / masalah terbuka
 (kosong)
