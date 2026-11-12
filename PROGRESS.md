@@ -3,7 +3,7 @@
 ## Status sesi
 | Sesi | Isi | Status |
 |---|---|---|
-| 0 | Fondasi repo | ⬜ |
+| 0 | Fondasi repo | ✅ |
 | 1 | Skema database | ⬜ |
 | 2 | Backend dasar + auth (F-01) | ⬜ |
 | 3 | Profil UMKM (F-02) | ⬜ |
@@ -24,10 +24,21 @@
 | 18 | Pengujian akhir + dokumentasi | ⬜ |
 
 ## Keputusan
-(kosong)
+- Sesi 0: bcrypt native build (node-gyp) tidak diapprove via npm install-scripts; tes health tidak memerlukan bcrypt, jadi tidak masalah untuk sesi ini.
 
 ## Catatan / masalah terbuka
 (kosong)
 
 ## Cara menjalankan
-(diisi seiring jalan)
+```bash
+# MariaDB
+cp .env.example .env  # isi nilai sesuai kebutuhan
+docker compose up -d
+
+# Backend
+cd backend && npm test       # jalankan tes
+cd backend && npm start      # jalankan server
+
+# Frontend
+cd frontend && npm install && npm run dev
+```
