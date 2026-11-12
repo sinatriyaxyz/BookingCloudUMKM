@@ -4,7 +4,7 @@
 | Sesi | Isi | Status |
 |---|---|---|
 | 0 | Fondasi repo | ✅ |
-| 1 | Skema database | ⬜ |
+| 1 | Skema database | ✅ |
 | 2 | Backend dasar + auth (F-01) | ⬜ |
 | 3 | Profil UMKM (F-02) | ⬜ |
 | 4 | Layanan (F-03) | ⬜ |
@@ -25,6 +25,7 @@
 
 ## Keputusan
 - Sesi 0: bcrypt native build (node-gyp) tidak diapprove via npm install-scripts; tes health tidak memerlukan bcrypt, jadi tidak masalah untuk sesi ini.
+- Sesi 1: seed.js ditempatkan di backend/ (bukan db/) agar bisa import pool.js dan bcrypt langsung; path migrations di migrate.js naik 3 level dari backend/src/db ke root repo.
 
 ## Catatan / masalah terbuka
 (kosong)
