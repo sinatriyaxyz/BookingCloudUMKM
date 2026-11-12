@@ -12,7 +12,7 @@
 | 6 | Jam kosong (F-05) | ✅ |
 | 7 | Booking + anti-bentrok (F-06) | ✅ |
 | 8 | Cek status + batal pelanggan (F-07, F-10) | ✅ |
-| 9 | Kelola reservasi + dashboard (F-08, F-09) | ⬜ |
+| 9 | Kelola reservasi + dashboard (F-08, F-09) | ✅ |
 | 10 | Tes isolasi & konkurensi (F-11) | ⬜ |
 | 11 | Frontend dasar + auth | ⬜ |
 | 12 | Frontend pemilik: profil, layanan, jam | ⬜ |
@@ -30,6 +30,7 @@
 - Sesi 6: Response GET /api/public/businesses/:slug/availability mengembalikan `{ date, slots }` dengan slots berupa array jam mulai "HH:mm". Validasi query menggunakan zod (serviceId integer positif, date format YYYY-MM-DD). Booking aktif (status 'menunggu' atau 'dikonfirmasi') difilter dari slot yang tersedia.
 - Sesi 7: Validasi input Zod mendukung camelCase & snake_case (serviceId/service_id, customerName/customer_name, customerPhone/customer_phone). Format telepon Indonesia (9-15 digit, diawali 0 atau +62). Anti-bentrok dijamin dengan SELECT ... FOR UPDATE pada baris businesses dan query bookings di dalam satu transaksi InnoDB. Generator kode 8 karakter dengan alfabet A-Z (tanpa I, O) dan angka 2-9 (tanpa 0, 1) dengan mekanisme retry otomatis dan SAVEPOINT saat terjadi bentrok UNIQUE.
 - Sesi 8: GET /api/public/bookings/:code menormalisasi input kode ke huruf besar dan mengembalikan data lengkap reservasi beserta nama UMKM dan layanan. POST /api/public/bookings/:code/cancel mengunci baris booking dalam transaksi, memvalidasi status hanya 'menunggu' atau 'dikonfirmasi', dan sisa waktu ke start_at minimal 2 jam (CANCEL_MIN_HOURS = 2) berbasis zona waktu Asia/Jakarta (WIB). Status diperbarui menjadi 'dibatalkan'.
+- Sesi 9: Transisi status booking dikontrol fungsi murni `canTransition(from, to)` (hanya izinkan menunggu -> dikonfirmasi/dibatalkan, dikonfirmasi -> selesai/dibatalkan). Endpoint aksi pemilik (/confirm, /complete, /cancel) menggunakan SELECT ... FOR UPDATE berdasar `id` dan `business_id` dari JWT (akses ID UMKM lain mengembalikan 404, transisi tidak sah mengembalikan 422). GET /api/bookings menyediakan filter tanggal, status, paginasi page & limit, serta toleran terhadap query param kosong. GET /api/dashboard mengembalikan `{ today, counts, history }` berbasis waktu WIB.
 
 ## Catatan / masalah terbuka
 (kosong)

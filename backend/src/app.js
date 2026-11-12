@@ -7,6 +7,8 @@ import publicRouter from './routes/public.js';
 import servicesRouter from './routes/services.js';
 import operatingHoursRouter from './routes/operatingHours.js';
 import holidaysRouter from './routes/holidays.js';
+import bookingsRouter from './routes/bookings.js';
+import dashboardRouter from './routes/dashboard.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -24,6 +26,8 @@ app.use('/api', profileRouter);
 app.use('/api', servicesRouter);
 app.use('/api', operatingHoursRouter);
 app.use('/api', holidaysRouter);
+app.use('/api', bookingsRouter);
+app.use('/api', dashboardRouter);
 app.use('/api/public', publicRouter);
 
 app.use(errorHandler);
