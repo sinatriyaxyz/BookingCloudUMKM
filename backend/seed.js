@@ -135,3 +135,4 @@ seed().catch((err) => {
   console.error('Seed gagal:', err.message);
   process.exit(1);
 });
+

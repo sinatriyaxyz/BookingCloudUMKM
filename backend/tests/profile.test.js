@@ -135,3 +135,4 @@ describe('GET /api/public/businesses/:slug', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 });
+

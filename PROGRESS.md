@@ -7,8 +7,8 @@
 | 1 | Skema database | ✅ |
 | 2 | Backend dasar + auth (F-01) | ✅ |
 | 3 | Profil UMKM (F-02) | ✅ |
-| 4 | Layanan (F-03) | ⬜ |
-| 5 | Jam operasional + libur (F-04) | ⬜ |
+| 4 | Layanan (F-03) | ✅ |
+| 5 | Jam operasional + libur (F-04) | ✅ |
 | 6 | Jam kosong (F-05) | ⬜ |
 | 7 | Booking + anti-bentrok (F-06) | ⬜ |
 | 8 | Cek status + batal pelanggan (F-07, F-10) | ⬜ |
@@ -26,6 +26,7 @@
 ## Keputusan
 - Sesi 0: bcrypt native build (node-gyp) tidak diapprove via npm install-scripts; tes health tidak memerlukan bcrypt, jadi tidak masalah untuk sesi ini.
 - Sesi 2: Zod v4 menggunakan `.issues` bukan `.errors` untuk akses error pertama. Mock pool.query di tes harus mencakup semua query termasuk `uniqueSlug` (3 call untuk register sukses).
+- Sesi 5: Jam operasional PUT menerima array 7 hari (atau { hours: [...] }), validasi open_time < close_time dengan normalisasi HH:mm. Duplikat tanggal libur mengembalikan status 409 (DUPLICATE_HOLIDAY). Hari yang belum diatur pada GET otomatis default tutup (is_closed: true).
 
 ## Catatan / masalah terbuka
 (kosong)

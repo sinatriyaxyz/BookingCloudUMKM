@@ -5,3 +5,4 @@ export function errorHandler(err, _req, res, _next) {
   const message = err.message || 'Terjadi kesalahan pada server.';
   res.status(status).json({ error: { code, message } });
 }
+

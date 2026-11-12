@@ -55,3 +55,4 @@ router.get('/businesses/:slug', async (req, res, next) => {
 });
 
 export default router;
+

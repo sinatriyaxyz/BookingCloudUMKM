@@ -14,3 +14,4 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Token tidak valid atau sudah kadaluarsa.' } });
   }
 }
+
