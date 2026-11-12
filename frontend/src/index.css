@@ -38,4 +38,29 @@ th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e4e7eb; ver
 .badge.dibatalkan { background: #fee2e2; color: #991b1b; }
 .tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
 .pager { display: flex; gap: .5rem; align-items: center; justify-content: center; margin-top: .75rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.chip { padding: .4rem .85rem; border: 1px solid #cbd2d9; border-radius: 999px; background: #fff; color: #1f2933; font: inherit; font-size: .9rem; cursor: pointer; }
+.chip.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .75rem; }
+.biz-card { display: block; text-decoration: none; color: inherit; margin-bottom: 0; transition: box-shadow .15s; }
+.biz-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,.12); }
+.biz-card h3 { margin: .4rem 0 .25rem; color: #1f2933; }
+.biz-card p { margin: 0; font-size: .9rem; }
+.list { list-style: none; padding: 0; margin: 0; }
+.list li { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid #e4e7eb; }
+.list li:last-child { border-bottom: 0; }
+.options { display: grid; gap: .5rem; }
+.option { display: flex; align-items: flex-start; gap: .6rem; padding: .65rem .75rem; border: 1px solid #cbd2d9; border-radius: 6px; cursor: pointer; }
+.option input[type=radio] { width: auto; margin-top: .25rem; }
+.option.active { border-color: #2563eb; background: #eff6ff; }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: .5rem; }
+.slot { padding: .55rem .4rem; border: 1px solid #cbd2d9; border-radius: 6px; background: #fff; color: #1f2933; font: inherit; font-weight: 600; cursor: pointer; text-align: center; }
+.slot:hover { border-color: #2563eb; }
+.slot.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.center { text-align: center; }
+.code-big { font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 700; letter-spacing: .15em; background: #f1f5f9; border: 2px dashed #94a3b8; border-radius: 8px; padding: .75rem 1rem; margin: .75rem auto; display: inline-block; }
+.code-big.small { font-size: 1.35rem; padding: .4rem .75rem; margin: 0 0 .5rem; }
+.details { display: grid; grid-template-columns: 90px 1fr; gap: .35rem .75rem; margin: .75rem 0 1rem; }
+.details dt { color: #6b7280; font-weight: 600; }
+.details dd { margin: 0; }
 @media (min-width: 640px) { .container { padding: 1.5rem; } }

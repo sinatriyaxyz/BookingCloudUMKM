@@ -28,6 +28,22 @@ export function ProtectedLayout() {
   )
 }
 
+export function PublicLayout() {
+  return (
+    <>
+      <header className="topbar">
+        <div className="container">
+          <NavLink to="/" className="brand" end>BookingCloud</NavLink>
+          <NavLink to="/" end>Beranda</NavLink>
+          <NavLink to="/cek">Cek Booking</NavLink>
+          <NavLink to="/owner">Pemilik</NavLink>
+        </div>
+      </header>
+      <main className="container"><Outlet /></main>
+    </>
+  )
+}
+
 export function AuthLayout({ title, children }) {
   return (
     <div className="container">
@@ -38,3 +54,4 @@ export function AuthLayout({ title, children }) {
     </div>
   )
 }
+

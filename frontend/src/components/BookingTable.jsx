@@ -60,3 +60,4 @@ export default function BookingTable({ rows, onChanged, onError, empty }) {
     />
   )
 }
+

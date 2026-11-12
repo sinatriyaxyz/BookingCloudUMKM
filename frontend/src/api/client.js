@@ -48,3 +48,4 @@ export async function api(path, { method = 'GET', body, query } = {}) {
   }
   return data
 }
+

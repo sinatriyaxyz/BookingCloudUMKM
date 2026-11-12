@@ -34,7 +34,7 @@ export default function Profile() {
   }
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
-  const link = me ? `${window.location.origin}/b/${me.slug}` : ''
+  const link = me ? `${window.location.origin}/u/${me.slug}` : ''
 
   return (
     <div className="card">
@@ -52,3 +52,4 @@ export default function Profile() {
     </div>
   )
 }
+

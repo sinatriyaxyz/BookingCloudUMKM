@@ -47,3 +47,4 @@ export function DataTable({ columns, rows, empty = 'Belum ada data.' }) {
 }
 
 export const rupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID')
+

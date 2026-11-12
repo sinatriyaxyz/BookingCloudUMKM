@@ -17,7 +17,7 @@
 | 11 | Frontend dasar + auth | ✅ |
 | 12 | Frontend pemilik: profil, layanan, jam | ✅ |
 | 13 | Frontend pemilik: dashboard | ✅ |
-| 14 | Frontend publik: booking | ⬜ |
+| 14 | Frontend publik: booking | ✅ |
 | 15 | Dockerisasi | ⬜ |
 | 16 | Deploy server + Nginx | ⬜ |
 | 17 | BIND9 | ⬜ |
@@ -33,6 +33,7 @@
 - Sesi 9: Transisi status booking dikontrol fungsi murni `canTransition(from, to)` (hanya izinkan menunggu -> dikonfirmasi/dibatalkan, dikonfirmasi -> selesai/dibatalkan). Endpoint aksi pemilik (/confirm, /complete, /cancel) menggunakan SELECT ... FOR UPDATE berdasar `id` dan `business_id` dari JWT (akses ID UMKM lain mengembalikan 404, transisi tidak sah mengembalikan 422). GET /api/bookings menyediakan filter tanggal, status, paginasi page & limit, serta toleran terhadap query param kosong. GET /api/dashboard mengembalikan `{ today, counts, history }` berbasis waktu WIB. Revisi: respons reservasi pemilik hanya camelCase (`startAt`, `serviceName`, dst.), daftar = `{ bookings, page, limit, total, totalPages }`; dashboard selalu memakai tanggal hari ini WIB (tanpa `?date=`); param `:id` & `:code` (sesi 8) divalidasi zod; opsi Zod v4 memakai `error` sehingga pesan `page`/`limit` berbahasa Indonesia.
 - Sesi 10: Pengujian isolasi lintas-tenant (F-11) pada `tests/isolation.test.js` memverifikasi bahwa token UMKM A tidak dapat memodifikasi atau menghapus resource milik UMKM B pada seluruh endpoint berparameter `:id` (`PUT/DELETE /api/services/:id`, `DELETE /api/holidays/:id`, `POST /api/bookings/:id/confirm|complete|cancel` → 404 `NOT_FOUND` dan data B di DB tidak berubah) serta endpoint GET list/dashboard milik A tidak memuat data B. Skrip `npm run test:all` ditambahkan dengan `--no-file-parallelism` agar suite tes integrasi MariaDB berjalan deterministik tanpa saling mengunci tabel antar-file; seluruh 13 file tes (145 pengujian) lulus.
 - Sesi 11-13: Frontend (Vite + React + react-router-dom, CSS biasa). Token JWT di localStorage (kunci `token`); proxy dev `/api` -> :3000. Rute: /owner (dashboard), /owner/riwayat, /owner/layanan, /owner/jam, /owner/profil, /owner/login, /owner/register. Link halaman publik di profil memakai `/b/:slug` (rute dibuat di sesi 14). Aksi reservasi hanya yang valid per status; riwayat memakai GET /api/bookings (limit 10). `npm run build` sukses; 150 tes backend lulus.
+- Sesi 14: Halaman publik pelanggan dengan `PublicLayout` pada rute `/` (daftar UMKM + filter kategori), `/u/:slug` (profil UMKM & layanan, ditambah redirect dari `/b/:slug` serta pembaruan tautan profil pemilik ke `/u/:slug`), `/u/:slug/booking` (pilih layanan -> pilih tanggal WIB -> grid jam kosong dari endpoint availability -> form nama & telepon -> kirim, termasuk auto-reload slot saat 409 `SLOT_TAKEN`), `/sukses/:code` (tampilan kode booking besar, tombol salin dengan fallback, tautan ke `/cek?kode=...`), dan `/cek` (input kode booking, detail status, tombol batalkan dengan penanganan pesan batas waktu minimal 2 jam).
 
 ## Catatan / masalah terbuka
 (kosong)
