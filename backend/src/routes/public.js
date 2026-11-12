@@ -14,7 +14,7 @@ const router = Router();
 
 const availabilityQuerySchema = z.object({
   serviceId: z.coerce
-    .number({ invalid_type_error: 'serviceId harus berupa angka.' })
+    .number({ error: 'serviceId harus berupa angka.' })
     .int({ message: 'serviceId harus bilangan bulat.' })
     .positive({ message: 'serviceId harus bilangan bulat positif.' }),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Format tanggal harus YYYY-MM-DD.' }),

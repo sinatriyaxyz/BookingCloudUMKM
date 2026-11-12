@@ -8,11 +8,16 @@ const router = Router();
 
 const holidaySchema = z.object({
   date: z
-    .string({ invalid_type_error: 'Tanggal harus berupa string.' })
+    .string({ error: 'Tanggal wajib diisi (YYYY-MM-DD).' })
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Format tanggal harus YYYY-MM-DD.' })
-    .refine((d) => !isNaN(Date.parse(d)), { message: 'Tanggal tidak valid.' }),
+    // Cek ketat: tanggal seperti 2026-02-30 ditolak (dayjs menggesernya ke bulan berikut).
+    .refine((d) => dayjs(d).isValid() && dayjs(d).format('YYYY-MM-DD') === d, {
+      message: 'Tanggal tidak valid.',
+    }),
   note: z.string().max(255, { message: 'Catatan maksimal 255 karakter.' }).optional().nullable().default(''),
 });
+
+const idParamSchema = z.coerce.number().int().positive();
 
 function formatDate(val) {
   if (val instanceof Date) {
@@ -91,10 +96,11 @@ router.post('/holidays', requireAuth, async (req, res, next) => {
 // DELETE /api/holidays/:id
 router.delete('/holidays/:id', requireAuth, async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
+    const parsedId = idParamSchema.safeParse(req.params.id);
+    if (!parsedId.success) {
       return res.status(422).json({ error: { code: 'VALIDATION_ERROR', message: 'ID libur tidak valid.' } });
     }
+    const id = parsedId.data;
 
     const [existing] = await pool.query(
       'SELECT id FROM holidays WHERE id = ? AND business_id = ?',

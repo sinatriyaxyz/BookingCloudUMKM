@@ -8,7 +8,7 @@ const router = Router();
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
 const dayItemSchema = z.object({
-  weekday: z.number({ invalid_type_error: 'Weekday harus berupa angka.' })
+  weekday: z.number({ error: 'Weekday harus berupa angka 0-6.' })
     .int({ message: 'Weekday harus bilangan bulat.' })
     .min(0, { message: 'Weekday minimal 0.' })
     .max(6, { message: 'Weekday maksimal 6.' }),

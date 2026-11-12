@@ -89,6 +89,16 @@ describe('POST /api/holidays', () => {
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  it('tanggal tidak ada di kalender (2026-02-30) → 422', async () => {
+    const res = await request(app)
+      .post('/api/holidays')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ date: '2026-02-30' });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.message).toBe('Tanggal tidak valid.');
+  });
 });
 
 describe('DELETE /api/holidays/:id', () => {

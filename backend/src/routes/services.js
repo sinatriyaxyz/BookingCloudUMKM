@@ -7,15 +7,32 @@ const router = Router();
 
 // Schema validasi
 const serviceSchema = z.object({
-  name: z.string().min(1, { message: 'Nama layanan tidak boleh kosong.' }),
-  price: z.number({ invalid_type_error: 'Harga harus berupa angka.' }).min(0, { message: 'Harga tidak boleh negatif.' }),
+  name: z
+    .string({ error: 'Nama layanan wajib diisi.' })
+    .trim()
+    .min(1, { message: 'Nama layanan tidak boleh kosong.' }),
+  price: z
+    .number({ error: 'Harga harus berupa angka.' })
+    .int({ message: 'Harga harus bilangan bulat (rupiah).' })
+    .min(0, { message: 'Harga tidak boleh negatif.' }),
   duration_min: z
-    .number({ invalid_type_error: 'Durasi harus berupa angka.' })
+    .number({ error: 'Durasi harus berupa angka.' })
     .int({ message: 'Durasi harus bilangan bulat.' })
     .min(15, { message: 'Durasi minimal 15 menit.' })
     .max(480, { message: 'Durasi maksimal 480 menit.' })
     .refine((v) => v % 15 === 0, { message: 'Durasi harus kelipatan 15 menit.' }),
 });
+
+const idParamSchema = z.coerce.number().int().positive();
+
+function parseId(req, res) {
+  const parsed = idParamSchema.safeParse(req.params.id);
+  if (!parsed.success) {
+    res.status(422).json({ error: { code: 'VALIDATION_ERROR', message: 'ID layanan tidak valid.' } });
+    return null;
+  }
+  return parsed.data;
+}
 
 const patchSchema = serviceSchema.partial().refine(
   (d) => Object.keys(d).length > 0,
@@ -58,7 +75,8 @@ router.post('/services', requireAuth, async (req, res, next) => {
 // PUT /api/services/:id
 router.put('/services/:id', requireAuth, async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const id = parseId(req, res);
+    if (id === null) return;
     const parsed = patchSchema.safeParse(req.body);
     if (!parsed.success) {
       const message = parsed.error.issues?.[0]?.message || 'Input tidak valid.';
@@ -80,13 +98,13 @@ router.put('/services/:id', requireAuth, async (req, res, next) => {
     if (data.name !== undefined) { fields.push('name = ?'); values.push(data.name); }
     if (data.price !== undefined) { fields.push('price = ?'); values.push(data.price); }
     if (data.duration_min !== undefined) { fields.push('duration_min = ?'); values.push(data.duration_min); }
-    values.push(id);
+    values.push(id, req.businessId);
 
-    await pool.query(`UPDATE services SET ${fields.join(', ')} WHERE id = ?`, values);
+    await pool.query(`UPDATE services SET ${fields.join(', ')} WHERE id = ? AND business_id = ?`, values);
 
     const [updated] = await pool.query(
-      'SELECT id, name, price, duration_min FROM services WHERE id = ?',
-      [id]
+      'SELECT id, name, price, duration_min FROM services WHERE id = ? AND business_id = ?',
+      [id, req.businessId]
     );
     return res.json(updated[0]);
   } catch (err) {
@@ -97,7 +115,8 @@ router.put('/services/:id', requireAuth, async (req, res, next) => {
 // DELETE /api/services/:id  (soft delete)
 router.delete('/services/:id', requireAuth, async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const id = parseId(req, res);
+    if (id === null) return;
 
     const [rows] = await pool.query(
       'SELECT id FROM services WHERE id = ? AND business_id = ? AND is_active = 1',
@@ -107,7 +126,7 @@ router.delete('/services/:id', requireAuth, async (req, res, next) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Layanan tidak ditemukan.' } });
     }
 
-    await pool.query('UPDATE services SET is_active = 0 WHERE id = ?', [id]);
+    await pool.query('UPDATE services SET is_active = 0 WHERE id = ? AND business_id = ?', [id, req.businessId]);
     return res.status(204).send();
   } catch (err) {
     next(err);

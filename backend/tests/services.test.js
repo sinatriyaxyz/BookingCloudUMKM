@@ -90,6 +90,43 @@ describe('POST /api/services', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('harga bukan angka → 422 dengan pesan Bahasa Indonesia', async () => {
+    const res = await request(app)
+      .post('/api/services')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ name: 'X', price: 'abc', duration_min: 30 });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.message).toBe('Harga harus berupa angka.');
+  });
+
+  it('harga desimal / nama hanya spasi → 422', async () => {
+    const r1 = await request(app)
+      .post('/api/services')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ name: 'X', price: 1500.5, duration_min: 30 });
+    expect(r1.status).toBe(422);
+
+    const r2 = await request(app)
+      .post('/api/services')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ name: '   ', price: 1000, duration_min: 30 });
+    expect(r2.status).toBe(422);
+  });
+
+  it('ID bukan angka pada PUT/DELETE → 422', async () => {
+    const r1 = await request(app)
+      .put('/api/services/abc')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ name: 'Y' });
+    expect(r1.status).toBe(422);
+
+    const r2 = await request(app)
+      .delete('/api/services/abc')
+      .set('Authorization', `Bearer ${makeToken(1)}`);
+    expect(r2.status).toBe(422);
+  });
+
   it('durasi 10 menit (< 15) → 422', async () => {
     const res = await request(app)
       .post('/api/services')
