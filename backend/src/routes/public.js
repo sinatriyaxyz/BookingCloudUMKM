@@ -41,6 +41,14 @@ const createBookingSchema = z.object({
     ),
 });
 
+// Kode booking dari URL: dinormalisasi ke huruf besar. Format salah diperlakukan
+// sama seperti kode tidak ada (404), agar tidak membocorkan informasi.
+const bookingCodeParamSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{1,20}$/);
+
 // GET /api/public/businesses
 router.get('/businesses', async (req, res, next) => {
   try {
@@ -349,14 +357,13 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
 // GET /api/public/bookings/:code
 router.get('/bookings/:code', async (req, res, next) => {
   try {
-    const rawCode = req.params.code;
-    const code = (rawCode || '').trim().toUpperCase();
-
-    if (!code) {
+    const parsedCode = bookingCodeParamSchema.safeParse(req.params.code);
+    if (!parsedCode.success) {
       return res.status(404).json({
         error: { code: 'NOT_FOUND', message: 'Kode booking tidak ditemukan.' },
       });
     }
+    const code = parsedCode.data;
 
     const [rows] = await pool.query(
       `SELECT
@@ -399,14 +406,13 @@ router.get('/bookings/:code', async (req, res, next) => {
 // POST /api/public/bookings/:code/cancel
 router.post('/bookings/:code/cancel', async (req, res, next) => {
   try {
-    const rawCode = req.params.code;
-    const code = (rawCode || '').trim().toUpperCase();
-
-    if (!code) {
+    const parsedCode = bookingCodeParamSchema.safeParse(req.params.code);
+    if (!parsedCode.success) {
       return res.status(404).json({
         error: { code: 'NOT_FOUND', message: 'Kode booking tidak ditemukan.' },
       });
     }
+    const code = parsedCode.data;
 
     const conn = await pool.getConnection();
     try {

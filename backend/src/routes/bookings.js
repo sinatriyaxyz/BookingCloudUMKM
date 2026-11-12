@@ -1,56 +1,35 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc.js';
-import timezone from 'dayjs/plugin/timezone.js';
 import pool from '../db/pool.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { canTransition, BOOKING_STATUS } from '../services/bookingStatus.js';
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
 const router = Router();
 
+// Kolom waktu sudah berupa string WIB "YYYY-MM-DD HH:mm:ss" (DATE_FORMAT di query).
+// Respons memakai camelCase, konsisten dengan endpoint publik.
 export function formatBooking(row) {
-  const startAt = typeof row.start_at === 'string'
-    ? row.start_at
-    : (row.start_at ? dayjs(row.start_at).tz('Asia/Jakarta').format('YYYY-MM-DD HH:mm:ss') : null);
-  const endAt = typeof row.end_at === 'string'
-    ? row.end_at
-    : (row.end_at ? dayjs(row.end_at).tz('Asia/Jakarta').format('YYYY-MM-DD HH:mm:ss') : null);
-  const createdAt = typeof row.created_at === 'string'
-    ? row.created_at
-    : (row.created_at ? dayjs(row.created_at).tz('Asia/Jakarta').format('YYYY-MM-DD HH:mm:ss') : null);
-  const updatedAt = typeof row.updated_at === 'string'
-    ? row.updated_at
-    : (row.updated_at ? dayjs(row.updated_at).tz('Asia/Jakarta').format('YYYY-MM-DD HH:mm:ss') : null);
-
   return {
     id: row.id,
     code: row.code,
-    service_id: row.service_id,
     serviceId: row.service_id,
-    service_name: row.service_name || '',
     serviceName: row.service_name || '',
-    price: row.price !== undefined && row.price !== null ? Number(row.price) : null,
-    duration_min: row.duration_min !== undefined && row.duration_min !== null ? Number(row.duration_min) : null,
-    durationMin: row.duration_min !== undefined && row.duration_min !== null ? Number(row.duration_min) : null,
-    customer_name: row.customer_name,
+    price: row.price != null ? Number(row.price) : null,
+    durationMin: row.duration_min != null ? Number(row.duration_min) : null,
     customerName: row.customer_name,
-    customer_phone: row.customer_phone,
     customerPhone: row.customer_phone,
-    start_at: startAt,
-    startAt: startAt,
-    end_at: endAt,
-    endAt: endAt,
+    startAt: row.start_at,
+    endAt: row.end_at,
     status: row.status,
-    created_at: createdAt,
-    createdAt: createdAt,
-    updated_at: updatedAt,
-    updatedAt: updatedAt,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
+
+const idParamSchema = z.coerce
+  .number({ error: 'ID reservasi tidak valid.' })
+  .int({ message: 'ID reservasi tidak valid.' })
+  .positive({ message: 'ID reservasi tidak valid.' });
 
 const listQuerySchema = z.object({
   date: z
@@ -67,14 +46,14 @@ const listQuerySchema = z.object({
     ),
   page: z.preprocess(
     (v) => (v === undefined || (typeof v === 'string' && v.trim() === '') ? 1 : Number(v)),
-    z.number({ invalid_type_error: 'Page harus berupa angka.' })
+    z.number({ error: 'Page harus berupa angka.' })
       .int({ message: 'Page harus bilangan bulat.' })
       .min(1, { message: 'Page minimal 1.' })
       .default(1)
   ),
   limit: z.preprocess(
     (v) => (v === undefined || (typeof v === 'string' && v.trim() === '') ? 10 : Number(v)),
-    z.number({ invalid_type_error: 'Limit harus berupa angka.' })
+    z.number({ error: 'Limit harus berupa angka.' })
       .int({ message: 'Limit harus bilangan bulat.' })
       .min(1, { message: 'Limit minimal 1.' })
       .max(100, { message: 'Limit maksimal 100.' })
@@ -143,21 +122,7 @@ router.get('/bookings', requireAuth, async (req, res, next) => {
     const items = rows.map(formatBooking);
     const totalPages = Math.ceil(total / limit);
 
-    return res.json({
-      bookings: items,
-      data: items,
-      total,
-      page,
-      limit,
-      totalPages,
-      total_pages: totalPages,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-      },
-    });
+    return res.json({ bookings: items, page, limit, total, totalPages });
   } catch (err) {
     next(err);
   }
@@ -165,12 +130,13 @@ router.get('/bookings', requireAuth, async (req, res, next) => {
 
 // Helper untuk update transisi status
 async function handleStatusTransition(req, res, next, targetStatus) {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
+  const parsedId = idParamSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
     return res.status(422).json({
       error: { code: 'VALIDATION_ERROR', message: 'ID reservasi tidak valid.' },
     });
   }
+  const id = parsedId.data;
 
   const conn = await pool.getConnection();
   try {
@@ -225,13 +191,9 @@ async function handleStatusTransition(req, res, next, targetStatus) {
       status: targetStatus,
       previousStatus: booking.status,
       customerName: booking.customer_name,
-      customer_name: booking.customer_name,
       serviceName: booking.service_name || '',
-      service_name: booking.service_name || '',
       startAt: booking.start_at,
-      start_at: booking.start_at,
       endAt: booking.end_at,
-      end_at: booking.end_at,
       message: `Status reservasi berhasil diubah menjadi '${targetStatus}'.`,
     });
   } catch (err) {

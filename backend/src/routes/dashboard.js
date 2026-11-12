@@ -14,9 +14,7 @@ const router = Router();
 // GET /api/dashboard
 router.get('/dashboard', requireAuth, async (req, res, next) => {
   try {
-    const todayWib = (req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date))
-      ? req.query.date
-      : dayjs().tz('Asia/Jakarta').format('YYYY-MM-DD');
+    const todayWib = dayjs().tz('Asia/Jakarta').format('YYYY-MM-DD');
 
     const startOfToday = `${todayWib} 00:00:00`;
     const endOfToday = `${todayWib} 23:59:59`;

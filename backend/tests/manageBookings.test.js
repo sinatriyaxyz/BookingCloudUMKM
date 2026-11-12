@@ -422,6 +422,15 @@ describe('Sesi 9 — GET /api/bookings (Filter & Paginasi)', () => {
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  it('validasi query: page bukan angka -> 422 dengan pesan Bahasa Indonesia', async () => {
+    const res = await request(app)
+      .get('/api/bookings?page=abc')
+      .set('Authorization', `Bearer ${tokenA}`);
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.message).toBe('Page harus berupa angka.');
+  });
 });
 
 describe('Sesi 9 — F-09: GET /api/dashboard', () => {
