@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import authRouter from './routes/auth.js';
+import meRouter from './routes/me.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
@@ -10,5 +13,9 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-export default app;
+app.use('/api/auth', authRouter);
+app.use('/api', meRouter);
 
+app.use(errorHandler);
+
+export default app;

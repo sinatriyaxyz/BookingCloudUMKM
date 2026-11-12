@@ -5,7 +5,7 @@
 |---|---|---|
 | 0 | Fondasi repo | ✅ |
 | 1 | Skema database | ✅ |
-| 2 | Backend dasar + auth (F-01) | ⬜ |
+| 2 | Backend dasar + auth (F-01) | ✅ |
 | 3 | Profil UMKM (F-02) | ⬜ |
 | 4 | Layanan (F-03) | ⬜ |
 | 5 | Jam operasional + libur (F-04) | ⬜ |
@@ -25,7 +25,7 @@
 
 ## Keputusan
 - Sesi 0: bcrypt native build (node-gyp) tidak diapprove via npm install-scripts; tes health tidak memerlukan bcrypt, jadi tidak masalah untuk sesi ini.
-- Sesi 1: seed.js ditempatkan di backend/ (bukan db/) agar bisa import pool.js dan bcrypt langsung; path migrations di migrate.js naik 3 level dari backend/src/db ke root repo.
+- Sesi 2: Zod v4 menggunakan `.issues` bukan `.errors` untuk akses error pertama. Mock pool.query di tes harus mencakup semua query termasuk `uniqueSlug` (3 call untuk register sukses).
 
 ## Catatan / masalah terbuka
 (kosong)
