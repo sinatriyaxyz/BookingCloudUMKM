@@ -6,7 +6,7 @@
 | 0 | Fondasi repo | ✅ |
 | 1 | Skema database | ✅ |
 | 2 | Backend dasar + auth (F-01) | ✅ |
-| 3 | Profil UMKM (F-02) | ⬜ |
+| 3 | Profil UMKM (F-02) | ✅ |
 | 4 | Layanan (F-03) | ⬜ |
 | 5 | Jam operasional + libur (F-04) | ⬜ |
 | 6 | Jam kosong (F-05) | ⬜ |
