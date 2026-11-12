@@ -22,13 +22,13 @@ const availabilityQuerySchema = z.object({
 
 const createBookingSchema = z.object({
   serviceId: z.coerce
-    .number({ invalid_type_error: 'serviceId harus berupa angka.' })
+    .number({ error: 'serviceId harus berupa angka.' })
     .int({ message: 'serviceId harus bilangan bulat.' })
     .positive({ message: 'serviceId harus bilangan bulat positif.' }),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Format tanggal harus YYYY-MM-DD.' }),
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, { message: 'Format jam harus HH:mm.' }),
   customerName: z
-    .string({ invalid_type_error: 'Nama pelanggan harus berupa teks.' })
+    .string({ error: 'Nama pelanggan wajib diisi.' })
     .trim()
     .min(1, { message: 'Nama pelanggan wajib diisi.' }),
   customerPhone: z
@@ -236,7 +236,6 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
       }
 
       const businessId = bizCheck[0].id;
-      await conn.query('SELECT id FROM businesses WHERE id = ? FOR UPDATE', [businessId]);
 
       // 2) Validasi:
       // a. Layanan milik UMKM & aktif
@@ -312,8 +311,6 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
             code: 'SLOT_TAKEN',
             message: 'Jam sudah terisi, pilih jam lain.',
           },
-          code: 'SLOT_TAKEN',
-          message: 'Jam sudah terisi, pilih jam lain.',
         });
       }
 
