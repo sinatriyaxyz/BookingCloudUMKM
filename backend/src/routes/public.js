@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
 import pool from '../db/pool.js';
-import { computeSlots, parseTimeToMinutes } from '../services/availability.js';
+import { computeSlots, parseTimeToMinutes, CANCEL_MIN_HOURS } from '../services/availability.js';
 import { insertBookingWithRetry } from '../services/bookingCode.js';
 
 dayjs.extend(utc);
@@ -341,6 +341,145 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
         await conn.rollback();
       } catch (_) {}
       next(err);
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/public/bookings/:code
+router.get('/bookings/:code', async (req, res, next) => {
+  try {
+    const rawCode = req.params.code;
+    const code = (rawCode || '').trim().toUpperCase();
+
+    if (!code) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Kode booking tidak ditemukan.' },
+      });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT
+        b.code,
+        biz.name AS businessName,
+        s.name AS serviceName,
+        DATE_FORMAT(b.start_at, '%Y-%m-%d %H:%i:%s') AS startAt,
+        DATE_FORMAT(b.end_at, '%Y-%m-%d %H:%i:%s') AS endAt,
+        b.status,
+        b.customer_name AS customerName
+      FROM bookings b
+      JOIN businesses biz ON b.business_id = biz.id
+      JOIN services s ON b.service_id = s.id
+      WHERE b.code = ?`,
+      [code]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Kode booking tidak ditemukan.' },
+      });
+    }
+
+    const booking = rows[0];
+
+    return res.json({
+      code: booking.code,
+      businessName: booking.businessName,
+      serviceName: booking.serviceName,
+      startAt: booking.startAt,
+      endAt: booking.endAt,
+      status: booking.status,
+      customerName: booking.customerName,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/public/bookings/:code/cancel
+router.post('/bookings/:code/cancel', async (req, res, next) => {
+  try {
+    const rawCode = req.params.code;
+    const code = (rawCode || '').trim().toUpperCase();
+
+    if (!code) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Kode booking tidak ditemukan.' },
+      });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const [rows] = await conn.query(
+        `SELECT
+          b.id,
+          b.code,
+          b.status,
+          DATE_FORMAT(b.start_at, '%Y-%m-%d %H:%i:%s') AS startAt
+        FROM bookings b
+        WHERE b.code = ?
+        FOR UPDATE`,
+        [code]
+      );
+
+      if (rows.length === 0) {
+        await conn.rollback();
+        return res.status(404).json({
+          error: { code: 'NOT_FOUND', message: 'Kode booking tidak ditemukan.' },
+        });
+      }
+
+      const booking = rows[0];
+
+      // Status hanya boleh dibatalkan jika menunggu atau dikonfirmasi
+      if (booking.status !== 'menunggu' && booking.status !== 'dikonfirmasi') {
+        await conn.rollback();
+        return res.status(422).json({
+          error: {
+            code: 'CANNOT_CANCEL',
+            message: `Reservasi tidak dapat dibatalkan karena statusnya sudah '${booking.status}'.`,
+          },
+        });
+      }
+
+      // Sisa waktu ke jam mulai harus >= CANCEL_MIN_HOURS (2 jam, WIB)
+      const nowWib = dayjs().tz('Asia/Jakarta');
+      const startWib = dayjs.tz(booking.startAt, 'Asia/Jakarta');
+      const diffSeconds = startWib.diff(nowWib, 'second');
+      const minRequiredSeconds = CANCEL_MIN_HOURS * 3600;
+
+      if (diffSeconds < minRequiredSeconds) {
+        await conn.rollback();
+        return res.status(422).json({
+          error: {
+            code: 'CANCEL_TOO_LATE',
+            message: `Pembatalan hanya dapat dilakukan paling lambat ${CANCEL_MIN_HOURS} jam sebelum jam reservasi.`,
+          },
+        });
+      }
+
+      await conn.query(
+        "UPDATE bookings SET status = 'dibatalkan' WHERE id = ?",
+        [booking.id]
+      );
+
+      await conn.commit();
+
+      return res.json({
+        code: booking.code,
+        status: 'dibatalkan',
+        message: 'Reservasi berhasil dibatalkan.',
+      });
+    } catch (err) {
+      try {
+        await conn.rollback();
+      } catch (_) {}
+      throw err;
     } finally {
       conn.release();
     }

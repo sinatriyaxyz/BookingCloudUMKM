@@ -6,6 +6,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 export const SLOT_STEP_MIN = 30;
+export const CANCEL_MIN_HOURS = 2;
 
 export function parseTimeToMinutes(timeVal) {
   if (!timeVal) return null;
