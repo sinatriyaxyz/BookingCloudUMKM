@@ -1,29 +1,78 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { createBooking, getAvailability, getBusiness, todayWib } from '../../api/public.js'
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  clearCustomerAuth,
+  estimateVoucherDiscount,
+  getCustomerLoyalty,
+  getCustomerMe,
+  getCustomerToken,
+  getStoredCustomer,
+} from '../../api/customer.js'
+import { CATEGORIES, createBooking, getAvailability, getBusiness, getCategoryMeta, todayWib } from '../../api/public.js'
 import { Alert, Button, Field, rupiah } from '../../components/ui.jsx'
 
 export default function Booking() {
   const { slug } = useParams()
   const [params] = useSearchParams()
+  const location = useLocation()
   const navigate = useNavigate()
+  const isLoggedIn = Boolean(getCustomerToken())
+  const storedCustomer = getStoredCustomer()
+
   const [biz, setBiz] = useState(null)
+  const [customer, setCustomer] = useState(storedCustomer)
   const [serviceId, setServiceId] = useState(params.get('layanan') || '')
   const [date, setDate] = useState(todayWib())
   const [slots, setSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [time, setTime] = useState('')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
+  const [name, setName] = useState(storedCustomer?.name || '')
+  const [phone, setPhone] = useState(storedCustomer?.phone || '')
+  const [myVouchers, setMyVouchers] = useState([])
+  const [customerPoints, setCustomerPoints] = useState(storedCustomer?.points || 0)
+  const [selectedVoucherId, setSelectedVoucherId] = useState('')
   const [error, setError] = useState('')
   const [slotError, setSlotError] = useState('')
   const [notice, setNotice] = useState('')
   const [sending, setSending] = useState(false)
   const reqId = useRef(0)
 
+  const loginRedirectUrl = `/masuk?redirect=${encodeURIComponent(location.pathname + location.search)}`
+
   useEffect(() => {
+    if (!isLoggedIn) return
     getBusiness(slug).then(setBiz).catch((e) => setError(e.message))
-  }, [slug])
+    getCustomerMe()
+      .then((me) => {
+        if (!me) return
+        setCustomer(me)
+        setName((prev) => prev || me.name || '')
+        setPhone((prev) => prev || me.phone || '')
+      })
+      .catch((err) => {
+        if (err.status === 401) {
+          clearCustomerAuth()
+          navigate(loginRedirectUrl, { replace: true })
+        }
+      })
+    getCustomerLoyalty()
+      .then((res) => {
+        setCustomerPoints(Number(res.points || 0))
+        setMyVouchers((res.myVouchers || []).filter((v) => v.status === 'tersedia'))
+      })
+      .catch(() => {})
+  }, [slug, isLoggedIn, navigate, loginRedirectUrl])
+
+  useEffect(() => {
+    if (!biz) return
+    const meta = getCategoryMeta(biz.category)
+    document.body.dataset.category = biz.category
+    document.body.className = meta.themeClass
+    return () => {
+      delete document.body.dataset.category
+      document.body.className = ''
+    }
+  }, [biz])
 
   const loadSlots = useCallback(async () => {
     if (!serviceId || !date) {
@@ -67,12 +116,18 @@ export default function Booking() {
         time,
         customerName: name,
         customerPhone: phone,
+        customerVoucherId: activeVoucher ? activeVoucher.id : undefined,
       })
       const service = biz.services.find((s) => String(s.id) === String(serviceId))
       navigate(`/sukses/${res.code}`, {
         state: { ...res, businessName: biz.name, serviceName: service?.name },
       })
     } catch (err) {
+      if (err.status === 401) {
+        clearCustomerAuth()
+        navigate(loginRedirectUrl, { replace: true })
+        return
+      }
       if (err.code === 'SLOT_TAKEN') {
         setNotice(`${err.message} Jam kosong sudah dimuat ulang.`)
         setTime('')
@@ -85,14 +140,45 @@ export default function Booking() {
     }
   }
 
+  if (!isLoggedIn) return <Navigate to={loginRedirectUrl} replace />
   if (!biz) return error ? <Alert error={error} /> : <p className="muted">Memuat...</p>
 
   const selected = biz.services.find((s) => String(s.id) === String(serviceId))
+  const meta = getCategoryMeta(biz.category)
+  const stepDone = [Boolean(selected), Boolean(selected && date), Boolean(selected && date && time), Boolean(selected && date && time && name && phone)]
+  const rawPrice = Number(selected?.price || 0)
+  const chosenVoucher = myVouchers.find((v) => String(v.id) === String(selectedVoucherId)) || null
+  const voucherEval = selected && chosenVoucher ? estimateVoucherDiscount(chosenVoucher, rawPrice) : null
+  const activeVoucher = voucherEval?.valid ? chosenVoucher : null
+  const discountAmount = voucherEval?.valid ? voucherEval.discountAmount : 0
+  const finalPrice = voucherEval?.valid ? voucherEval.finalPrice : rawPrice
+  const estimatedPoints = selected ? Math.max(10, Math.floor(finalPrice / 1000)) : 0
 
   return (
     <>
-      <p><Link to={`/u/${slug}`}>← {biz.name}</Link></p>
-      <h2>Booking di {biz.name}</h2>
+      <p className="back-nav"><Link to={`/u/${slug}`}>← Kembali ke {biz.name}</Link></p>
+      <div
+        className="card biz-hero compact"
+        style={{ backgroundImage: `url('${meta.image}')` }}
+      >
+        <div className="biz-hero-overlay">
+          <span className={`badge cat-badge cat-${biz.category}`}>
+            {meta.icon} {CATEGORIES[biz.category] || biz.category}
+          </span>
+          <h2>Booking di {biz.name}</h2>
+          {biz.address && <p className="biz-hero-sub">📍 {biz.address}</p>}
+        </div>
+      </div>
+
+      <div className="booking-stepper" aria-label="Progres pemesanan">
+        {['Layanan', 'Tanggal', 'Jam', 'Konfirmasi'].map((label, i) => (
+          <div key={label} className={`step-pill ${stepDone[i] ? 'done' : ''}`}>
+            <span className="step-num">{stepDone[i] ? '✓' : i + 1}</span>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+
       <form onSubmit={submit}>
         <div className="card">
           <h3>1. Pilih layanan</h3>
@@ -160,6 +246,11 @@ export default function Booking() {
 
         <div className="card">
           <h3>4. Data pemesan</h3>
+          {customer && (
+            <div className="customer-booking-banner">
+              <span>👤 Memesan sebagai <strong>{customer.name}</strong> ({customer.email})</span>
+            </div>
+          )}
           <Field label="Nama" id="name" value={name} onChange={(e) => setName(e.target.value)} required />
           <Field
             label="Nomor telepon"
@@ -172,6 +263,62 @@ export default function Booking() {
             required
           />
           <Alert error={error} />
+
+          {selected && (
+            <div className="booking-voucher-section">
+              <div className="booking-voucher-head">
+                <label htmlFor="voucherSelect">🎟️ Gunakan Voucher Diskon</label>
+                <Link to="/poin-voucher" className="muted small">
+                  Poin Anda: <strong>{customerPoints}</strong> · Tukar Voucher ↗
+                </Link>
+              </div>
+              {myVouchers.length === 0 ? (
+                <p className="muted small" style={{ margin: '4px 0 0' }}>
+                  Belum ada voucher tersedia. Selesaikan booking untuk kumpulkan poin!
+                </p>
+              ) : (
+                <select
+                  id="voucherSelect"
+                  className="voucher-select"
+                  value={activeVoucher ? String(activeVoucher.id) : ''}
+                  onChange={(e) => setSelectedVoucherId(e.target.value)}
+                >
+                  <option value="">-- Tidak menggunakan voucher --</option>
+                  {myVouchers.map((v) => {
+                    const check = estimateVoucherDiscount(v, rawPrice)
+                    return (
+                      <option key={v.id} value={v.id} disabled={!check.valid}>
+                        {v.code} — {v.title}{' '}
+                        {check.valid ? `(Hemat ${rupiah(check.discountAmount)})` : `(${check.reason})`}
+                      </option>
+                    )
+                  })}
+                </select>
+              )}
+
+              <div className="booking-price-summary">
+                <div className="price-row">
+                  <span>Harga Layanan ({selected.name})</span>
+                  <span>{rupiah(rawPrice)}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="price-row is-discount">
+                    <span>Diskon Voucher ({activeVoucher?.code})</span>
+                    <span>-{rupiah(discountAmount)}</span>
+                  </div>
+                )}
+                <div className="price-row is-total">
+                  <strong>Total Bayar di Tempat</strong>
+                  <strong>{rupiah(finalPrice)}</strong>
+                </div>
+                <div className="price-row is-points">
+                  <span>Estimasi Poin Setelah Selesai</span>
+                  <span className="points-earned-pill">+{estimatedPoints} Poin</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {selected && time && (
             <p className="muted">
               {selected.name} · {date} pukul {time} WIB

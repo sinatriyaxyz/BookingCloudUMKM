@@ -59,7 +59,7 @@ describe('F-07: Cek Status Reservasi (GET /api/public/bookings/:code)', () => {
     const res = await request(app).get(`/api/public/bookings/${code}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({
+    expect(res.body).toMatchObject({
       code: 'F08CHK01',
       businessName: 'Barber F08 Test',
       serviceName: 'Potong Rambut F08',
@@ -68,6 +68,10 @@ describe('F-07: Cek Status Reservasi (GET /api/public/bookings/:code)', () => {
       status: 'menunggu',
       customerName: 'Budi Pelanggan',
     });
+    // Info lokasi UMKM untuk peta di halaman sukses/cek status
+    expect(res.body).toHaveProperty('businessSlug');
+    expect(res.body).toHaveProperty('businessLatitude');
+    expect(res.body).toHaveProperty('businessLongitude');
   });
 
   it('kode huruf kecil diterima dan otomatis dinormalisasi ke huruf besar', async () => {

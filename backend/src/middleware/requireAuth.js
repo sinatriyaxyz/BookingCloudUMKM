@@ -8,6 +8,9 @@ export function requireAuth(req, res, next) {
   const token = authHeader.slice(7);
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'changeme_jwt_secret');
+    if (!payload.businessId || payload.role === 'customer') {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Token tidak valid atau bukan akun pemilik UMKM.' } });
+    }
     req.businessId = payload.businessId;
     next();
   } catch {

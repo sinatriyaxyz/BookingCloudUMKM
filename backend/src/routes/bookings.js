@@ -3,6 +3,7 @@ import { z } from 'zod';
 import pool from '../db/pool.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { canTransition, BOOKING_STATUS } from '../services/bookingStatus.js';
+import { calculatePointsForPrice } from '../services/loyalty.js';
 
 const router = Router();
 
@@ -15,6 +16,10 @@ export function formatBooking(row) {
     serviceId: row.service_id,
     serviceName: row.service_name || '',
     price: row.price != null ? Number(row.price) : null,
+    originalPrice: row.original_price != null ? Number(row.original_price) : (row.price != null ? Number(row.price) : 0),
+    discountAmount: row.discount_amount != null ? Number(row.discount_amount) : 0,
+    finalPrice: row.final_price != null ? Number(row.final_price) : (row.price != null ? Number(row.price) : 0),
+    pointsEarned: row.points_earned != null ? Number(row.points_earned) : 0,
     durationMin: row.duration_min != null ? Number(row.duration_min) : null,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
@@ -103,6 +108,10 @@ router.get('/bookings', requireAuth, async (req, res, next) => {
         b.service_id,
         s.name AS service_name,
         s.price,
+        b.original_price,
+        b.discount_amount,
+        b.final_price,
+        b.points_earned,
         s.duration_min,
         b.customer_name,
         b.customer_phone,
@@ -148,7 +157,12 @@ async function handleStatusTransition(req, res, next, targetStatus) {
         b.code,
         b.business_id,
         b.service_id,
+        b.customer_id,
+        b.customer_voucher_id,
+        b.final_price,
+        b.points_earned,
         s.name AS service_name,
+        s.price,
         b.customer_name,
         b.customer_phone,
         DATE_FORMAT(b.start_at, '%Y-%m-%d %H:%i:%s') AS start_at,
@@ -181,7 +195,41 @@ async function handleStatusTransition(req, res, next, targetStatus) {
       });
     }
 
-    await conn.query('UPDATE bookings SET status = ? WHERE id = ?', [targetStatus, id]);
+    let pointsEarned = Number(booking.points_earned || 0);
+
+    if (targetStatus === BOOKING_STATUS.SELESAI && booking.customer_id && pointsEarned === 0) {
+      const effectivePrice = Number(booking.final_price || booking.price || 0);
+      pointsEarned = calculatePointsForPrice(effectivePrice);
+
+      await conn.query('UPDATE bookings SET status = ?, points_earned = ? WHERE id = ?', [
+        targetStatus,
+        pointsEarned,
+        id,
+      ]);
+      await conn.query('UPDATE customers SET points = points + ? WHERE id = ?', [
+        pointsEarned,
+        booking.customer_id,
+      ]);
+      await conn.query(
+        `INSERT INTO point_transactions (customer_id, booking_id, type, points, description)
+         VALUES (?, ?, 'earn', ?, ?)`,
+        [
+          booking.customer_id,
+          id,
+          pointsEarned,
+          `Poin selesai reservasi ${booking.service_name || 'Layanan'} (${booking.code})`,
+        ]
+      );
+    } else {
+      await conn.query('UPDATE bookings SET status = ? WHERE id = ?', [targetStatus, id]);
+
+      if (targetStatus === BOOKING_STATUS.DIBATALKAN && booking.customer_voucher_id) {
+        await conn.query(
+          "UPDATE customer_vouchers SET status = 'tersedia', used_at = NULL WHERE id = ? AND status = 'terpakai'",
+          [booking.customer_voucher_id]
+        );
+      }
+    }
 
     await conn.commit();
 
@@ -194,6 +242,7 @@ async function handleStatusTransition(req, res, next, targetStatus) {
       serviceName: booking.service_name || '',
       startAt: booking.start_at,
       endAt: booking.end_at,
+      pointsEarned,
       message: `Status reservasi berhasil diubah menjadi '${targetStatus}'.`,
     });
   } catch (err) {

@@ -57,6 +57,30 @@ describe('PUT /api/me/profile', () => {
     expect(res.status).toBe(401);
   });
 
+  it('update kategori baru (klinik_kecantikan) berhasil → 200', async () => {
+    const updated = {
+      id: 1,
+      owner_email: 'owner@test.com',
+      name: 'Glow Clinic',
+      slug: 'glow-clinic',
+      category: 'klinik_kecantikan',
+      address: 'Jl. Melati 5',
+      phone: '081234567890',
+      created_at: '2026-01-01 08:00:00',
+    };
+    pool.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[updated]]);
+
+    const res = await request(app)
+      .put('/api/me/profile')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ category: 'klinik_kecantikan' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.category).toBe('klinik_kecantikan');
+  });
+
   it('kategori tidak valid → 422', async () => {
     const res = await request(app)
       .put('/api/me/profile')
@@ -71,6 +95,64 @@ describe('PUT /api/me/profile', () => {
       .put('/api/me/profile')
       .set('Authorization', `Bearer ${makeToken(1)}`)
       .send({});
+    expect(res.status).toBe(422);
+  });
+
+  it('simpan koordinat lokasi → 200, UPDATE latitude & longitude dengan business_id dari token', async () => {
+    const updated = { id: 1, name: 'Barber', slug: 'barber', category: 'barbershop', latitude: '-6.917464', longitude: '107.619123' };
+    pool.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[updated]]);
+
+    const res = await request(app)
+      .put('/api/me/profile')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ latitude: -6.917464, longitude: 107.619123 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.latitude).toBe('-6.917464');
+    const [sql, values] = pool.query.mock.calls[0];
+    expect(sql).toContain('latitude = ?');
+    expect(sql).toContain('longitude = ?');
+    expect(values).toEqual([-6.917464, 107.619123, 1]);
+  });
+
+  it('hapus koordinat (null, null) → 200', async () => {
+    pool.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[{ id: 1, latitude: null, longitude: null }]]);
+
+    const res = await request(app)
+      .put('/api/me/profile')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ latitude: null, longitude: null });
+    expect(res.status).toBe(200);
+    expect(pool.query.mock.calls[0][1]).toEqual([null, null, 1]);
+  });
+
+  it('latitude di luar rentang → 422', async () => {
+    const res = await request(app)
+      .put('/api/me/profile')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ latitude: 95, longitude: 107 });
+    expect(res.status).toBe(422);
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('hanya latitude tanpa longitude → 422', async () => {
+    const res = await request(app)
+      .put('/api/me/profile')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ latitude: -6.9 });
+    expect(res.status).toBe(422);
+    expect(res.body.error.message).toBe('Latitude dan longitude harus diisi bersamaan.');
+  });
+
+  it('latitude berupa teks → 422', async () => {
+    const res = await request(app)
+      .put('/api/me/profile')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ latitude: 'abc', longitude: 107 });
     expect(res.status).toBe(422);
   });
 });
@@ -101,6 +183,33 @@ describe('GET /api/public/businesses', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].category).toBe('barbershop');
+  });
+
+  it('?lat=&lng= → query memakai Haversine & urut jarak terdekat', async () => {
+    const rows = [
+      { name: 'Dekat', slug: 'dekat', category: 'barbershop', address: null, latitude: '-6.900000', longitude: '107.600000', distance_km: 1.2 },
+      { name: 'Tanpa Lokasi', slug: 'tanpa', category: 'salon', address: null, latitude: null, longitude: null, distance_km: null },
+    ];
+    pool.query.mockResolvedValueOnce([rows]);
+
+    const res = await request(app).get('/api/public/businesses?lat=-6.91&lng=107.61');
+    expect(res.status).toBe(200);
+    expect(res.body[0].distance_km).toBe(1.2);
+    const [sql, params] = pool.query.mock.calls[0];
+    expect(sql).toContain('distance_km');
+    expect(sql).toContain('ORDER BY distance_km IS NULL');
+    expect(params).toEqual([-6.91, -6.91, 107.61]);
+  });
+
+  it('koordinat tidak valid → 422', async () => {
+    const res = await request(app).get('/api/public/businesses?lat=abc&lng=107');
+    expect(res.status).toBe(422);
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('hanya lat tanpa lng → 422', async () => {
+    const res = await request(app).get('/api/public/businesses?lat=-6.9');
+    expect(res.status).toBe(422);
   });
 });
 

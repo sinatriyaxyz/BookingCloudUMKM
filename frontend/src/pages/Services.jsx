@@ -58,38 +58,16 @@ export default function Services() {
   return (
     <>
       <div className="card">
-        <h2>Layanan</h2>
-        <Alert error={error} />
-        <DataTable
-          rows={items}
-          empty="Belum ada layanan."
-          columns={[
-            { header: 'Nama', render: (s) => s.name },
-            { header: 'Harga', render: (s) => rupiah(s.price) },
-            { header: 'Durasi', render: (s) => `${s.duration_min} menit` },
-            {
-              header: 'Aksi',
-              render: (s) => (
-                <>
-                  <Button small variant="secondary" onClick={() => edit(s)}>Ubah</Button>
-                  <Button small variant="danger" onClick={() => remove(s)}>Hapus</Button>
-                </>
-              ),
-            },
-          ]}
-        />
-      </div>
-      <div className="card">
-        <h3>{editId ? 'Ubah layanan' : 'Tambah layanan'}</h3>
+        <h3>{editId ? '✏️ Ubah Layanan' : '➕ Tambah Layanan Baru'}</h3>
         <form onSubmit={submit}>
           <div className="row">
-            <Field label="Nama" id="sname" required value={form.name} onChange={set('name')} />
-            <Field label="Harga (Rp)" id="sprice" type="number" min="0" step="1" required
+            <Field label="Nama Layanan" id="sname" placeholder="Contoh: Potong Rambut + Cuci" required value={form.name} onChange={set('name')} />
+            <Field label="Harga (Rp)" id="sprice" type="number" min="0" step="1" placeholder="35000" required
               value={form.price} onChange={set('price')} />
-            <Field label="Durasi (menit)" id="sdur" type="number" min="1" step="1" required
+            <Field label="Durasi (menit)" id="sdur" type="number" min="1" step="1" placeholder="30" required
               value={form.duration_min} onChange={set('duration_min')} />
           </div>
-          <Button type="submit" loading={loading}>{editId ? 'Simpan perubahan' : 'Tambah'}</Button>
+          <Button type="submit" loading={loading}>{editId ? '✓ Simpan Perubahan' : '+ Tambah Layanan'}</Button>
           {editId && (
             <Button type="button" variant="secondary" onClick={() => { setEditId(null); setForm(EMPTY) }}>
               Batal
@@ -97,7 +75,29 @@ export default function Services() {
           )}
         </form>
       </div>
+
+      <div className="card">
+        <h2>✂️ Daftar Layanan Aktif</h2>
+        <Alert error={error} />
+        <DataTable
+          rows={items}
+          empty="Belum ada layanan. Tambahkan layanan pertama Anda di atas."
+          columns={[
+            { header: 'Nama Layanan', render: (s) => <strong>{s.name}</strong> },
+            { header: 'Harga', render: (s) => <span className="badge selesai">{rupiah(s.price)}</span> },
+            { header: 'Durasi', render: (s) => <span className="badge">⏱️ {s.duration_min} menit</span> },
+            {
+              header: 'Aksi',
+              render: (s) => (
+                <>
+                  <Button small variant="secondary" onClick={() => edit(s)}>✏️ Ubah</Button>
+                  <Button small variant="danger" onClick={() => remove(s)}>🗑️ Hapus</Button>
+                </>
+              ),
+            },
+          ]}
+        />
+      </div>
     </>
   )
 }
-

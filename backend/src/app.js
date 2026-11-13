@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import authRouter from './routes/auth.js';
+import customerAuthRouter from './routes/customerAuth.js';
 import meRouter from './routes/me.js';
 import profileRouter from './routes/profile.js';
 import publicRouter from './routes/public.js';
@@ -9,6 +10,8 @@ import operatingHoursRouter from './routes/operatingHours.js';
 import holidaysRouter from './routes/holidays.js';
 import bookingsRouter from './routes/bookings.js';
 import dashboardRouter from './routes/dashboard.js';
+import analyticsRouter from './routes/analytics.js';
+import loyaltyRouter from './routes/loyalty.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -21,6 +24,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/customer', customerAuthRouter);
+app.use('/api/customer', loyaltyRouter);
 app.use('/api', meRouter);
 app.use('/api', profileRouter);
 app.use('/api', servicesRouter);
@@ -28,6 +33,7 @@ app.use('/api', operatingHoursRouter);
 app.use('/api', holidaysRouter);
 app.use('/api', bookingsRouter);
 app.use('/api', dashboardRouter);
+app.use('/api', analyticsRouter);
 app.use('/api/public', publicRouter);
 
 app.use(errorHandler);

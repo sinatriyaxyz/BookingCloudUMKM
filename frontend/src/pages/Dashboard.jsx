@@ -25,26 +25,37 @@ export default function Dashboard() {
   const c = data?.counts
   return (
     <>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>Dashboard</h2>
-        <Button variant="secondary" onClick={load} loading={loading}>Muat ulang</Button>
+      <div className="section-header">
+        <div>
+          <h2>📊 Ringkasan Hari Ini</h2>
+          <p className="muted" style={{ margin: 0 }}>Pantau dan konfirmasi reservasi pelanggan yang masuk hari ini.</p>
+        </div>
+        <Button variant="secondary" onClick={load} loading={loading}>↻ Muat ulang</Button>
       </div>
       <Alert error={error} />
       <div className="stats">
-        <div className="stat"><div className="num">{c?.menunggu ?? '-'}</div>Menunggu</div>
-        <div className="stat"><div className="num">{c?.dikonfirmasi ?? '-'}</div>Dikonfirmasi</div>
-        <div className="stat"><div className="num">{c?.hari_ini ?? '-'}</div>Hari ini</div>
+        <div className="stat stat-warn">
+          <span className="stat-label">⏳ Menunggu Konfirmasi</span>
+          <div className="num">{c?.menunggu ?? '-'}</div>
+        </div>
+        <div className="stat stat-info">
+          <span className="stat-label">✅ Dikonfirmasi</span>
+          <div className="num">{c?.dikonfirmasi ?? '-'}</div>
+        </div>
+        <div className="stat stat-primary">
+          <span className="stat-label">📅 Total Hari Ini</span>
+          <div className="num">{c?.hari_ini ?? '-'}</div>
+        </div>
       </div>
       <div className="card">
-        <h3>Reservasi hari ini</h3>
+        <h3>📋 Daftar Reservasi Hari Ini</h3>
         <BookingTable
           rows={data?.today ?? []}
           onChanged={load}
           onError={setError}
-          empty="Tidak ada reservasi hari ini."
+          empty="Tidak ada reservasi terjadwal untuk hari ini."
         />
       </div>
     </>
   )
 }
-

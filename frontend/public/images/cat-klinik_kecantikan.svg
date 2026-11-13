@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4c0519"/>
+      <stop offset="55%" stop-color="#881337"/>
+      <stop offset="100%" stop-color="#be185d"/>
+    </linearGradient>
+    <linearGradient id="roseGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#fda4af"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#bg)"/>
+  <circle cx="630" cy="180" r="185" fill="#fda4af" opacity="0.14"/>
+  <circle cx="480" cy="110" r="115" fill="#fde68a" opacity="0.1"/>
+  <!-- Botanical leaf arc -->
+  <path d="M430 340 C460 240, 540 180, 650 150" stroke="#fda4af" stroke-width="3" fill="none" opacity="0.35"/>
+  <ellipse cx="485" cy="260" rx="28" ry="12" transform="rotate(-35 485 260)" fill="#fda4af" opacity="0.25"/>
+  <ellipse cx="545" cy="210" rx="30" ry="13" transform="rotate(-25 545 210)" fill="#fde68a" opacity="0.22"/>
+  <!-- Serum Dropper Bottle -->
+  <g transform="translate(565, 85)">
+    <rect x="25" y="75" width="90" height="145" rx="20" fill="#fff1f2" opacity="0.92"/>
+    <rect x="35" y="105" width="70" height="80" rx="10" fill="url(#roseGold)" opacity="0.55"/>
+    <rect x="52" y="45" width="36" height="32" rx="6" fill="url(#roseGold)"/>
+    <path d="M58 45 L58 20 C58 8, 82 8, 82 20 L82 45 Z" fill="#fda4af"/>
+    <!-- Droplet -->
+    <path d="M-25 145 C-25 145, -42 172, -42 184 A17 17 0 0 0 -8 184 C-8 172, -25 145, -25 145 Z" fill="#fde68a" opacity="0.85"/>
+  </g>
+  <!-- Sparkles -->
+  <g fill="#fde68a" opacity="0.85">
+    <path d="M480 95 L486 112 L503 118 L486 124 L480 141 L474 124 L457 118 L474 112 Z"/>
+    <path d="M715 110 L719 121 L730 125 L719 129 L715 140 L711 129 L700 125 L711 121 Z"/>
+  </g>
+</svg>
+

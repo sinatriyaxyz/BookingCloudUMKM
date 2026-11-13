@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import jwt from 'jsonwebtoken';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
@@ -14,9 +15,13 @@ import { isValidBookingCode } from '../src/services/bookingCode.js';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme_jwt_secret';
 const BIZ_SLUG = 'f06-barbershop';
+const CUSTOMER_EMAIL = 'f06-customer@test.com';
 let businessId;
 let serviceId;
+let customerId;
+let customerToken;
 
 const targetDate = dayjs().tz('Asia/Jakarta').add(10, 'day').format('YYYY-MM-DD');
 const holidayDate = dayjs().tz('Asia/Jakarta').add(25, 'day').format('YYYY-MM-DD');
@@ -24,6 +29,16 @@ const holidayDate = dayjs().tz('Asia/Jakarta').add(25, 'day').format('YYYY-MM-DD
 beforeAll(async () => {
   // Bersihkan data lama jika ada
   await pool.query('DELETE FROM businesses WHERE slug = ?', [BIZ_SLUG]);
+  await pool.query('DELETE FROM customers WHERE email = ?', [CUSTOMER_EMAIL]);
+
+  // Siapkan akun konsumen uji coba
+  const [custRes] = await pool.query(
+    `INSERT INTO customers (name, email, phone, password_hash)
+     VALUES ('Pelanggan F06', ?, '081234567890', 'dummyhash')`,
+    [CUSTOMER_EMAIL]
+  );
+  customerId = custRes.insertId;
+  customerToken = jwt.sign({ customerId, role: 'customer' }, JWT_SECRET, { expiresIn: '1h' });
 
   // Siapkan UMKM uji coba
   const [bizRes] = await pool.query(
@@ -62,16 +77,35 @@ afterAll(async () => {
   if (businessId) {
     await pool.query('DELETE FROM businesses WHERE id = ?', [businessId]);
   }
+  if (customerId) {
+    await pool.query('DELETE FROM customers WHERE id = ?', [customerId]);
+  }
   await pool.end();
 });
 
 describe('F-06: Booking dan Anti-Bentrok', () => {
+  it('tanpa login konsumen → 401 UNAUTHORIZED', async () => {
+    const res = await request(app)
+      .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+      .send({
+        serviceId,
+        date: targetDate,
+        time: '10:00',
+        customerName: 'Tamu Tanpa Akun',
+        customerPhone: '081234567890',
+      });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
+  });
+
   // =========================================================================
   // a) Booking sukses → mendapat kode 8 karakter
   // =========================================================================
   it('a) booking sukses → mendapat kode 8 karakter dan data reservasi lengkap', async () => {
     const res = await request(app)
       .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         serviceId,
         date: targetDate,
@@ -102,6 +136,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     it('di luar jam buka (sebelum buka 08:00) → 422', async () => {
       const res = await request(app)
         .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({
           serviceId,
           date: targetDate,
@@ -117,6 +152,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     it('di luar jam buka (melewati tutup: jam 18:00 untuk layanan 30m) → 422', async () => {
       const res = await request(app)
         .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({
           serviceId,
           date: targetDate,
@@ -132,6 +168,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     it('tanggal lampau → 422', async () => {
       const res = await request(app)
         .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({
           serviceId,
           date: '2020-01-01',
@@ -147,6 +184,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     it('hari libur → 422', async () => {
       const res = await request(app)
         .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({
           serviceId,
           date: holidayDate,
@@ -162,6 +200,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     it('nama kosong → 422', async () => {
       const res = await request(app)
         .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({
           serviceId,
           date: targetDate,
@@ -177,6 +216,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     it('telepon tidak valid (< 9 digit atau bukan awalan 0/+62) → 422', async () => {
       const res = await request(app)
         .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({
           serviceId,
           date: targetDate,
@@ -197,6 +237,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     // 1. Buat booking awal pada 11:00 (11:00 - 11:30)
     const firstRes = await request(app)
       .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         serviceId,
         date: targetDate,
@@ -209,6 +250,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     // 2. Coba booking di jam yang persis sama (11:00)
     const sameRes = await request(app)
       .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         serviceId,
         date: targetDate,
@@ -223,6 +265,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     // 3. Coba booking beririsan sebagian (11:15 - 11:45)
     const overlapRes = await request(app)
       .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         serviceId,
         date: targetDate,
@@ -236,6 +279,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     // 4. Booking tepat setelahnya (11:30 - 12:00) harus BERHASIL (tidak beririsan)
     const nextRes = await request(app)
       .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+      .set('Authorization', `Bearer ${customerToken}`)
       .send({
         serviceId,
         date: targetDate,
@@ -255,6 +299,7 @@ describe('F-06: Booking dan Anti-Bentrok', () => {
     const requests = Array.from({ length: 20 }, (_, idx) =>
       request(app)
         .post(`/api/public/businesses/${BIZ_SLUG}/bookings`)
+        .set('Authorization', `Bearer ${customerToken}`)
         .send({
           serviceId,
           date: targetDate,

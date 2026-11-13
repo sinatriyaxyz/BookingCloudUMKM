@@ -8,7 +8,7 @@ const router = Router();
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, owner_email, name, slug, category, address, phone, created_at FROM businesses WHERE id = ?',
+      'SELECT id, owner_email, name, slug, category, address, latitude, longitude, phone, created_at FROM businesses WHERE id = ?',
       [req.businessId]
     );
     if (rows.length === 0) {

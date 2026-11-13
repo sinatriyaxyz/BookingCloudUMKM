@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="55%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#bg)"/>
+  <circle cx="615" cy="200" r="185" fill="#bae6fd" opacity="0.16"/>
+  <!-- Washer Body -->
+  <g transform="translate(520, 75)">
+    <rect x="0" y="0" width="185" height="240" rx="22" fill="#f8fafc" opacity="0.95"/>
+    <rect x="0" y="0" width="185" height="48" rx="22" fill="#e2e8f0"/>
+    <circle cx="32" cy="24" r="8" fill="#38bdf8"/>
+    <circle cx="56" cy="24" r="6" fill="#94a3b8"/>
+    <rect x="115" y="16" width="44" height="16" rx="8" fill="#3b82f6"/>
+    <!-- Drum -->
+    <circle cx="92" cy="145" r="62" fill="#0284c7" stroke="#cbd5e1" stroke-width="10"/>
+    <path d="M40 150 Q66 125 92 150 T144 150 A52 52 0 0 1 40 150 Z" fill="#38bdf8" opacity="0.8"/>
+    <circle cx="72" cy="126" r="10" fill="#ffffff" opacity="0.5"/>
+    <circle cx="110" cy="136" r="7" fill="#ffffff" opacity="0.45"/>
+  </g>
+  <!-- Soap Bubbles -->
+  <g fill="#e0f2fe" opacity="0.5">
+    <circle cx="465" cy="145" r="24"/>
+    <circle cx="435" cy="200" r="14"/>
+    <circle cx="485" cy="245" r="18"/>
+    <circle cx="735" cy="115" r="16"/>
+  </g>
+</svg>
+

@@ -9,15 +9,22 @@ export const STATUS_LABEL = {
   dibatalkan: 'Dibatalkan',
 }
 
+const STATUS_ICON = {
+  menunggu: '⏳',
+  dikonfirmasi: '✅',
+  selesai: '🎉',
+  dibatalkan: '❌',
+}
+
 // Aksi valid per status (sesuai aturan transisi backend)
 const ACTIONS = {
   menunggu: [
-    { key: 'confirm', label: 'Konfirmasi', variant: 'success' },
-    { key: 'cancel', label: 'Batalkan', variant: 'danger' },
+    { key: 'confirm', label: '✓ Konfirmasi', variant: 'success' },
+    { key: 'cancel', label: '✕ Batalkan', variant: 'danger' },
   ],
   dikonfirmasi: [
-    { key: 'complete', label: 'Selesai', variant: '' },
-    { key: 'cancel', label: 'Batalkan', variant: 'danger' },
+    { key: 'complete', label: '★ Selesai', variant: '' },
+    { key: 'cancel', label: '✕ Batalkan', variant: 'danger' },
   ],
 }
 
@@ -43,21 +50,75 @@ export default function BookingTable({ rows, onChanged, onError, empty }) {
       rows={rows}
       empty={empty}
       columns={[
-        { header: 'Kode', render: (b) => <strong>{b.code}</strong> },
-        { header: 'Waktu', render: (b) => b.startAt.slice(0, 16) },
-        { header: 'Pelanggan', render: (b) => <>{b.customerName}<br /><span className="muted">{b.customerPhone}</span></> },
-        { header: 'Layanan', render: (b) => <>{b.serviceName}{b.price != null && <><br /><span className="muted">{rupiah(b.price)}</span></>}</> },
-        { header: 'Status', render: (b) => <span className={`badge ${b.status}`}>{STATUS_LABEL[b.status] || b.status}</span> },
+        { header: 'Kode', render: (b) => <span className="code-pill">{b.code}</span> },
+        { header: 'Waktu (WIB)', render: (b) => <strong>{b.startAt.slice(0, 16)}</strong> },
+        {
+          header: 'Pelanggan',
+          render: (b) => (
+            <>
+              <strong>{b.customerName}</strong>
+              <br />
+              <span className="muted">📞 {b.customerPhone}</span>
+            </>
+          ),
+        },
+        {
+          header: 'Layanan',
+          render: (b) => {
+            const shownPrice = b.finalPrice != null ? b.finalPrice : b.price
+            const hasDiscount = Number(b.discountAmount || 0) > 0
+            return (
+              <>
+                <strong>{b.serviceName}</strong>
+                {shownPrice != null && (
+                  <>
+                    <br />
+                    <span className="muted">
+                      {hasDiscount && (
+                        <span style={{ textDecoration: 'line-through', marginRight: 5 }}>
+                          {rupiah(b.originalPrice || b.price)}
+                        </span>
+                      )}
+                      {rupiah(shownPrice)}
+                    </span>
+                    {hasDiscount && (
+                      <span className="discount-tag" style={{ marginLeft: 5 }}>
+                        -{rupiah(b.discountAmount)}
+                      </span>
+                    )}
+                    {Number(b.pointsEarned || 0) > 0 && (
+                      <span className="points-earned-pill" style={{ marginLeft: 5 }}>
+                        +{b.pointsEarned} Poin
+                      </span>
+                    )}
+                  </>
+                )}
+              </>
+            )
+          },
+        },
+        {
+          header: 'Status',
+          render: (b) => (
+            <span className={`badge ${b.status}`}>
+              {STATUS_ICON[b.status] || ''} {STATUS_LABEL[b.status] || b.status}
+            </span>
+          ),
+        },
         {
           header: 'Aksi',
-          render: (b) => (ACTIONS[b.status] || []).map((a) => (
-            <Button key={a.key} small variant={a.variant} disabled={busy === b.id} onClick={() => act(b, a)}>
-              {a.label}
-            </Button>
-          )),
+          render: (b) =>
+            (ACTIONS[b.status] || []).length === 0 ? (
+              <span className="muted">—</span>
+            ) : (
+              (ACTIONS[b.status] || []).map((a) => (
+                <Button key={a.key} small variant={a.variant} disabled={busy === b.id} onClick={() => act(b, a)}>
+                  {a.label}
+                </Button>
+              ))
+            ),
         },
       ]}
     />
   )
 }
-

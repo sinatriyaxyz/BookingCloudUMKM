@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#042f2e"/>
+      <stop offset="55%" stop-color="#115e59"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="stone" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#99f6e4"/>
+      <stop offset="100%" stop-color="#2dd4bf"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#bg)"/>
+  <circle cx="620" cy="210" r="185" fill="#5eead4" opacity="0.12"/>
+  <circle cx="470" cy="120" r="110" fill="#fde68a" opacity="0.08"/>
+  <!-- Ripple rings -->
+  <ellipse cx="600" cy="315" rx="145" ry="26" fill="none" stroke="#99f6e4" stroke-width="2" opacity="0.25"/>
+  <ellipse cx="600" cy="315" rx="190" ry="36" fill="none" stroke="#99f6e4" stroke-width="1.5" opacity="0.15"/>
+  <!-- Stacked Zen Stones -->
+  <ellipse cx="600" cy="285" rx="88" ry="34" fill="#134e4a" stroke="#5eead4" stroke-opacity="0.4" stroke-width="2"/>
+  <ellipse cx="600" cy="228" rx="64" ry="26" fill="#0d9488" stroke="#99f6e4" stroke-opacity="0.45" stroke-width="2"/>
+  <ellipse cx="600" cy="182" rx="42" ry="19" fill="url(#stone)" opacity="0.9"/>
+  <!-- Lotus Flower -->
+  <g transform="translate(600, 130)" fill="#fde68a" opacity="0.9">
+    <path d="M0 -42 C16 -22, 16 2, 0 18 C-16 2, -16 -22, 0 -42 Z"/>
+    <path d="M-8 16 C-34 6, -42 -16, -24 -32 C-12 -18, -6 -2, -8 16 Z" opacity="0.8"/>
+    <path d="M8 16 C34 6, 42 -16, 24 -32 C12 -18, 6 -2, 8 16 Z" opacity="0.8"/>
+  </g>
+  <!-- Gentle steam waves -->
+  <g stroke="#ccfbf1" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.35">
+    <path d="M445 250 C430 220, 460 190, 445 160"/>
+    <path d="M475 265 C460 235, 490 205, 475 175"/>
+  </g>
+</svg>
+

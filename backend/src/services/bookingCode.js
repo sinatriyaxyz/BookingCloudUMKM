@@ -40,10 +40,15 @@ export async function insertBookingWithRetry(
   {
     businessId,
     serviceId,
+    customerId = null,
     customerName,
     customerPhone,
     startAt,
     endAt,
+    originalPrice = 0,
+    discountAmount = 0,
+    finalPrice = 0,
+    customerVoucherId = null,
     status = 'menunggu',
   },
   maxRetries = 5
@@ -53,9 +58,26 @@ export async function insertBookingWithRetry(
     try {
       await conn.query('SAVEPOINT sp_insert_booking');
       await conn.query(
-        `INSERT INTO bookings (code, business_id, service_id, customer_name, customer_phone, start_at, end_at, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [code, businessId, serviceId, customerName, customerPhone, startAt, endAt, status]
+        `INSERT INTO bookings (
+           code, business_id, service_id, customer_id, customer_name, customer_phone,
+           start_at, end_at, original_price, discount_amount, final_price, customer_voucher_id, status
+         )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          code,
+          businessId,
+          serviceId,
+          customerId,
+          customerName,
+          customerPhone,
+          startAt,
+          endAt,
+          originalPrice,
+          discountAmount,
+          finalPrice,
+          customerVoucherId,
+          status,
+        ]
       );
       await conn.query('RELEASE SAVEPOINT sp_insert_booking');
       return code;

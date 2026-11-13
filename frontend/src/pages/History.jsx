@@ -31,27 +31,36 @@ export default function History() {
 
   return (
     <div className="card">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>Riwayat reservasi</h2>
-        <Button variant="secondary" onClick={load} loading={loading}>Muat ulang</Button>
+      <div className="section-header" style={{ marginBottom: '1rem' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>📋 Riwayat Reservasi</h2>
+          <p className="muted" style={{ margin: '.2rem 0 0' }}>Cari dan filter seluruh riwayat booking berdasarkan tanggal atau status.</p>
+        </div>
+        <Button variant="secondary" onClick={load} loading={loading}>↻ Muat ulang</Button>
       </div>
-      <div className="row">
-        <Field label="Tanggal" id="fdate" type="date" value={filter.date} onChange={change('date')} />
-        <Field label="Status" id="fstatus">
+      <div className="filter-bar">
+        <Field label="📅 Filter Tanggal" id="fdate" type="date" value={filter.date} onChange={change('date')} />
+        <Field label="🏷️ Filter Status" id="fstatus">
           <select id="fstatus" value={filter.status} onChange={change('status')}>
-            <option value="">Semua</option>
+            <option value="">Semua Status</option>
             {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Field>
+        {(filter.date || filter.status) && (
+          <div style={{ marginBottom: '.85rem' }}>
+            <Button small variant="secondary" onClick={() => { setFilter({ date: '', status: '' }); setPage(1) }}>
+              ✕ Reset Filter
+            </Button>
+          </div>
+        )}
       </div>
       <Alert error={error} />
-      <BookingTable rows={data?.bookings ?? []} onChanged={load} onError={setError} empty="Tidak ada reservasi." />
+      <BookingTable rows={data?.bookings ?? []} onChanged={load} onError={setError} empty="Tidak ada data reservasi yang cocok." />
       <div className="pager">
-        <Button small variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Sebelumnya</Button>
-        <span>Halaman {page} dari {totalPages}</span>
-        <Button small variant="secondary" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Berikutnya</Button>
+        <Button small variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Sebelumnya</Button>
+        <span className="pager-info">Halaman <strong>{page}</strong> dari <strong>{totalPages}</strong></span>
+        <Button small variant="secondary" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Berikutnya →</Button>
       </div>
     </div>
   )
 }
-

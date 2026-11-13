@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client.js'
+import { CATEGORIES, getCategoryMeta } from '../api/public.js'
 import { Alert, Button, Field } from '../components/ui.jsx'
+import { LocationPicker } from '../components/Maps.jsx'
+import { toLatLng } from '../api/geo.js'
 
 export default function Profile() {
   const [me, setMe] = useState(null)
-  const [form, setForm] = useState({ name: '', address: '', phone: '' })
+  const [form, setForm] = useState({ name: '', category: 'barbershop', address: '', phone: '', location: null })
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   const [loading, setLoading] = useState(false)
@@ -12,7 +15,13 @@ export default function Profile() {
   useEffect(() => {
     api('/me').then((d) => {
       setMe(d)
-      setForm({ name: d.name || '', address: d.address || '', phone: d.phone || '' })
+      setForm({
+        name: d.name || '',
+        category: d.category || 'barbershop',
+        address: d.address || '',
+        phone: d.phone || '',
+        location: toLatLng(d.latitude, d.longitude),
+      })
     }).catch((e) => setError(e.message))
   }, [])
 
@@ -22,7 +31,14 @@ export default function Profile() {
     try {
       const d = await api('/me/profile', {
         method: 'PUT',
-        body: { name: form.name, address: form.address || null, phone: form.phone || null },
+        body: {
+          name: form.name,
+          category: form.category,
+          address: form.address || null,
+          phone: form.phone || null,
+          latitude: form.location ? form.location[0] : null,
+          longitude: form.location ? form.location[1] : null,
+        },
       })
       setMe(d)
       setOk('Profil disimpan.')
@@ -38,18 +54,37 @@ export default function Profile() {
 
   return (
     <div className="card">
-      <h2>Profil UMKM</h2>
+      <h2>🏪 Profil UMKM</h2>
+      <p className="muted" style={{ marginTop: 0 }}>Informasi ini ditampilkan pada halaman booking publik usaha Anda.</p>
       <Alert error={error} success={ok} />
       {me && (
-        <p>Halaman publik: <a href={link} target="_blank" rel="noreferrer">{link}</a></p>
+        <div className="public-link-box">
+          <span>🌐 Tautan Booking Pelanggan:</span>
+          <a href={link} target="_blank" rel="noreferrer"><strong>{link}</strong> ↗</a>
+        </div>
       )}
       <form onSubmit={submit}>
-        <Field label="Nama usaha" id="name" required value={form.name} onChange={set('name')} />
-        <Field label="Alamat" id="address" value={form.address} onChange={set('address')} />
-        <Field label="Telepon" id="phone" value={form.phone} onChange={set('phone')} />
-        <Button type="submit" loading={loading}>Simpan</Button>
+        <Field label="Nama Usaha" id="name" required value={form.name} onChange={set('name')} />
+        <Field label="Kategori Usaha" id="category">
+          <select id="category" value={form.category} onChange={set('category')}>
+            {Object.entries(CATEGORIES).map(([k, label]) => (
+              <option key={k} value={k}>
+                {getCategoryMeta(k).icon} {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Alamat Lengkap" id="address" placeholder="Contoh: Jl. Merdeka No. 10, Bandung" value={form.address} onChange={set('address')} />
+        {me && (
+          <LocationPicker
+            value={form.location}
+            address={form.address}
+            onChange={(location) => setForm((f) => ({ ...f, location }))}
+          />
+        )}
+        <Field label="Nomor Telepon / WhatsApp" id="phone" placeholder="08xxxxxxxxxx" value={form.phone} onChange={set('phone')} />
+        <Button type="submit" loading={loading}>✓ Simpan Profil</Button>
       </form>
     </div>
   )
 }
-

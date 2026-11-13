@@ -6,6 +6,8 @@ import timezone from 'dayjs/plugin/timezone.js';
 import pool from '../db/pool.js';
 import { computeSlots, parseTimeToMinutes, CANCEL_MIN_HOURS } from '../services/availability.js';
 import { insertBookingWithRetry } from '../services/bookingCode.js';
+import { requireCustomerAuth } from '../middleware/requireCustomerAuth.js';
+import { calculateVoucherDiscount } from '../services/loyalty.js';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -30,7 +32,8 @@ const createBookingSchema = z.object({
   customerName: z
     .string({ error: 'Nama pelanggan wajib diisi.' })
     .trim()
-    .min(1, { message: 'Nama pelanggan wajib diisi.' }),
+    .min(1, { message: 'Nama pelanggan wajib diisi.' })
+    .optional(),
   customerPhone: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).replace(/[\s-]/g, ''))
@@ -38,7 +41,18 @@ const createBookingSchema = z.object({
       z.string().regex(/^(0[0-9]{8,14}|\+62[0-9]{7,13})$/, {
         message: 'Nomor telepon harus format Indonesia (9-15 digit, diawali 0 atau +62).',
       })
-    ),
+    )
+    .optional(),
+  customerVoucherId: z
+    .preprocess(
+      (v) => (v === '' || v === undefined || v === null ? null : v),
+      z.coerce
+        .number({ error: 'customerVoucherId harus berupa angka.' })
+        .int({ message: 'customerVoucherId harus bilangan bulat.' })
+        .positive({ message: 'customerVoucherId harus bilangan bulat positif.' })
+        .nullable()
+    )
+    .optional(),
 });
 
 // Kode booking dari URL: dinormalisasi ke huruf besar. Format salah diperlakukan
@@ -49,19 +63,46 @@ const bookingCodeParamSchema = z
   .toUpperCase()
   .regex(/^[A-Z0-9]{1,20}$/);
 
+// Query opsional ?lat=&lng= untuk mengurutkan UMKM berdasarkan jarak (km)
+const nearQuerySchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+});
+
 // GET /api/public/businesses
 router.get('/businesses', async (req, res, next) => {
   try {
     const { category } = req.query;
-    let sql = 'SELECT name, slug, category, address FROM businesses';
     const params = [];
+    let near = null;
+
+    if (req.query.lat !== undefined || req.query.lng !== undefined) {
+      const parsedNear = nearQuerySchema.safeParse({ lat: req.query.lat, lng: req.query.lng });
+      if (!parsedNear.success) {
+        return res.status(422).json({
+          error: { code: 'VALIDATION_ERROR', message: 'Koordinat lokasi tidak valid.' },
+        });
+      }
+      near = parsedNear.data;
+    }
+
+    // Rumus Haversine (radius bumi 6371 km); NULL jika UMKM belum punya titik lokasi
+    const distanceSql = near
+      ? `, ROUND(6371 * 2 * ASIN(SQRT(
+            POWER(SIN(RADIANS(latitude - ?) / 2), 2) +
+            COS(RADIANS(?)) * COS(RADIANS(latitude)) * POWER(SIN(RADIANS(longitude - ?) / 2), 2)
+          )), 2) AS distance_km`
+      : '';
+    if (near) params.push(near.lat, near.lat, near.lng);
+
+    let sql = `SELECT name, slug, category, address, latitude, longitude${distanceSql} FROM businesses`;
 
     if (category) {
       sql += ' WHERE category = ?';
       params.push(category);
     }
 
-    sql += ' ORDER BY name ASC';
+    sql += near ? ' ORDER BY distance_km IS NULL, distance_km ASC, name ASC' : ' ORDER BY name ASC';
 
     const [rows] = await pool.query(sql, params);
     return res.json(rows);
@@ -172,7 +213,7 @@ router.get('/businesses/:slug', async (req, res, next) => {
     const { slug } = req.params;
 
     const [bizRows] = await pool.query(
-      'SELECT id, name, slug, category, address, phone FROM businesses WHERE slug = ?',
+      'SELECT id, name, slug, category, address, latitude, longitude, phone FROM businesses WHERE slug = ?',
       [slug]
     );
 
@@ -196,8 +237,8 @@ router.get('/businesses/:slug', async (req, res, next) => {
   }
 });
 
-// POST /api/public/businesses/:slug/bookings
-router.post('/businesses/:slug/bookings', async (req, res, next) => {
+// POST /api/public/businesses/:slug/bookings (wajib login konsumen)
+router.post('/businesses/:slug/bookings', requireCustomerAuth, async (req, res, next) => {
   try {
     const { slug } = req.params;
 
@@ -207,6 +248,7 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
       time: req.body.time,
       customerName: req.body.customerName ?? req.body.customer_name,
       customerPhone: req.body.customerPhone ?? req.body.customer_phone,
+      customerVoucherId: req.body.customerVoucherId ?? req.body.customer_voucher_id,
     });
 
     if (!parsed.success) {
@@ -214,7 +256,20 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
       return res.status(422).json({ error: { code: 'VALIDATION_ERROR', message } });
     }
 
-    const { serviceId, date, time, customerName, customerPhone } = parsed.data;
+    const [custRows] = await pool.query(
+      'SELECT id, name, phone FROM customers WHERE id = ?',
+      [req.customerId]
+    );
+    if (custRows.length === 0) {
+      return res.status(401).json({
+        error: { code: 'UNAUTHORIZED', message: 'Akun pelanggan tidak ditemukan. Silakan masuk ulang.' },
+      });
+    }
+    const customer = custRows[0];
+
+    const { serviceId, date, time, customerVoucherId } = parsed.data;
+    const customerName = parsed.data.customerName ?? customer.name;
+    const customerPhone = parsed.data.customerPhone ?? customer.phone;
 
     const timeFormatted = time.length === 5 ? `${time}:00` : time;
     const startDayjs = dayjs.tz(`${date} ${timeFormatted}`, 'Asia/Jakarta');
@@ -248,7 +303,7 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
       // 2) Validasi:
       // a. Layanan milik UMKM & aktif
       const [serviceRows] = await conn.query(
-        'SELECT id, name, duration_min, is_active FROM services WHERE id = ? AND business_id = ?',
+        'SELECT id, name, price, duration_min, is_active FROM services WHERE id = ? AND business_id = ?',
         [serviceId, businessId]
       );
 
@@ -322,15 +377,68 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
         });
       }
 
-      // 5) INSERT status 'menunggu', COMMIT, balas 201 {code, startAt, endAt, status}
+      // 5) Terapkan voucher jika dipilih, INSERT status 'menunggu', COMMIT
+      const originalPrice = Number(service.price || 0);
+      let discountAmount = 0;
+      let finalPrice = originalPrice;
+      let appliedCustomerVoucherId = null;
+
+      if (customerVoucherId) {
+        const [cvRows] = await conn.query(
+          `SELECT cv.id, cv.status, cv.voucher_id, v.title, v.discount_type, v.discount_value, v.min_spend, v.max_discount
+           FROM customer_vouchers cv
+           JOIN vouchers v ON cv.voucher_id = v.id
+           WHERE cv.id = ? AND cv.customer_id = ?
+           FOR UPDATE`,
+          [customerVoucherId, customer.id]
+        );
+
+        if (cvRows.length === 0) {
+          await conn.rollback();
+          return res.status(404).json({
+            error: { code: 'NOT_FOUND', message: 'Voucher tidak ditemukan.' },
+          });
+        }
+
+        const cv = cvRows[0];
+        if (cv.status !== 'tersedia') {
+          await conn.rollback();
+          return res.status(422).json({
+            error: { code: 'VOUCHER_UNAVAILABLE', message: 'Voucher sudah digunakan atau tidak berlaku lagi.' },
+          });
+        }
+
+        const disc = calculateVoucherDiscount(cv, originalPrice);
+        if (!disc.valid) {
+          await conn.rollback();
+          return res.status(422).json({
+            error: { code: 'VOUCHER_MIN_SPEND', message: disc.message },
+          });
+        }
+
+        discountAmount = disc.discountAmount;
+        finalPrice = disc.finalPrice;
+        appliedCustomerVoucherId = cv.id;
+
+        await conn.query(
+          "UPDATE customer_vouchers SET status = 'terpakai', used_at = NOW() WHERE id = ?",
+          [cv.id]
+        );
+      }
+
       const code = await insertBookingWithRetry(conn, {
         businessId,
         serviceId: service.id,
+        customerId: customer.id,
         customerName,
         customerPhone,
         startAt,
         endAt,
         status: 'menunggu',
+        originalPrice,
+        discountAmount,
+        finalPrice,
+        customerVoucherId: appliedCustomerVoucherId,
       });
 
       await conn.commit();
@@ -340,6 +448,9 @@ router.post('/businesses/:slug/bookings', async (req, res, next) => {
         startAt,
         endAt,
         status: 'menunggu',
+        originalPrice,
+        discountAmount,
+        finalPrice,
       });
     } catch (err) {
       try {
@@ -369,11 +480,19 @@ router.get('/bookings/:code', async (req, res, next) => {
       `SELECT
         b.code,
         biz.name AS businessName,
+        biz.slug AS businessSlug,
+        biz.address AS businessAddress,
+        biz.latitude AS businessLatitude,
+        biz.longitude AS businessLongitude,
         s.name AS serviceName,
         DATE_FORMAT(b.start_at, '%Y-%m-%d %H:%i:%s') AS startAt,
         DATE_FORMAT(b.end_at, '%Y-%m-%d %H:%i:%s') AS endAt,
         b.status,
-        b.customer_name AS customerName
+        b.customer_name AS customerName,
+        COALESCE(b.original_price, s.price, 0) AS originalPrice,
+        COALESCE(b.discount_amount, 0) AS discountAmount,
+        COALESCE(b.final_price, s.price, 0) AS finalPrice,
+        COALESCE(b.points_earned, 0) AS pointsEarned
       FROM bookings b
       JOIN businesses biz ON b.business_id = biz.id
       JOIN services s ON b.service_id = s.id
@@ -392,11 +511,19 @@ router.get('/bookings/:code', async (req, res, next) => {
     return res.json({
       code: booking.code,
       businessName: booking.businessName,
+      businessSlug: booking.businessSlug,
+      businessAddress: booking.businessAddress,
+      businessLatitude: booking.businessLatitude,
+      businessLongitude: booking.businessLongitude,
       serviceName: booking.serviceName,
       startAt: booking.startAt,
       endAt: booking.endAt,
       status: booking.status,
       customerName: booking.customerName,
+      originalPrice: Number(booking.originalPrice || 0),
+      discountAmount: Number(booking.discountAmount || 0),
+      finalPrice: Number(booking.finalPrice || 0),
+      pointsEarned: Number(booking.pointsEarned || 0),
     });
   } catch (err) {
     next(err);
@@ -423,6 +550,7 @@ router.post('/bookings/:code/cancel', async (req, res, next) => {
           b.id,
           b.code,
           b.status,
+          b.customer_voucher_id,
           DATE_FORMAT(b.start_at, '%Y-%m-%d %H:%i:%s') AS startAt
         FROM bookings b
         WHERE b.code = ?
@@ -470,6 +598,13 @@ router.post('/bookings/:code/cancel', async (req, res, next) => {
         "UPDATE bookings SET status = 'dibatalkan' WHERE id = ?",
         [booking.id]
       );
+
+      if (booking.customer_voucher_id) {
+        await conn.query(
+          "UPDATE customer_vouchers SET status = 'tersedia', used_at = NULL WHERE id = ? AND status = 'terpakai'",
+          [booking.customer_voucher_id]
+        );
+      }
 
       await conn.commit();
 

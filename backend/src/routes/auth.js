@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../db/pool.js';
+import { BUSINESS_CATEGORIES } from '../constants/categories.js';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ const registerSchema = z.object({
   email: z.string().email({ message: 'Email tidak valid.' }),
   password: z.string().min(8, { message: 'Password minimal 8 karakter.' }),
   businessName: z.string().min(1, { message: 'Nama usaha tidak boleh kosong.' }),
-  category: z.enum(['barbershop', 'salon', 'bengkel', 'studio_foto', 'lainnya'], {
+  category: z.enum(BUSINESS_CATEGORIES, {
     message: 'Kategori tidak valid.',
   }),
 });
